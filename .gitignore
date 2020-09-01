@@ -139,3 +139,4 @@ drug_learning/2D/set_size_MACCS/
 drug_learning/2D/output_domain_analysis*/
 /drug_learning/2D_smaller_dataset/hyperparameters_tunning/
 /drug_learning/2D_smaller_dataset/features/shared_set_features_mordred.npy
+/drug_learning/2D_smaller_dataset/Power9/
