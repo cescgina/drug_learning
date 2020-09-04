@@ -237,12 +237,14 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
             train_val_data_fp, _, train_val_labels_fp, _ = train_test_split(features_shared, labels_2c9,
                                                                             train_size=dataset_size, test_size=2,
                                                                             stratify=labels_2c9, random_state=seed)
-            train_val_data_fp, train_val_labels_fp = rus.fit_resample(train_val_data_fp, train_val_labels_fp)
+            if balance_dataset:
+                train_val_data_fp, train_val_labels_fp = rus.fit_resample(train_val_data_fp, train_val_labels_fp)
         if use_descriptors:
             train_val_data_des, _, train_val_labels_des, _ = train_test_split(norm_descriptors_shared, labels_2c9,
                                                                               train_size=dataset_size, test_size=2,
                                                                               stratify=labels_2c9, random_state=seed)
-            train_val_data_des, train_val_labels_des = rus.fit_resample(train_val_data_des, train_val_labels_des)
+            if balance_dataset:
+                train_val_data_des, train_val_labels_des = rus.fit_resample(train_val_data_des, train_val_labels_des)
         if use_descriptors and use_fingerprints:
             npt.assert_array_equal(train_val_labels_fp, train_val_labels_des,
                                    err_msg='Train labels do not coincide between descriptors and fingerprints.')
@@ -390,7 +392,7 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
 
         print(f"----> Test set split {split + 1}")
 
-        print(f"CV fold {i} of split {split} out of {len(rand_num)}")
+        print(f"Computing test for split {split} out of {len(rand_num)}")
         plot_results_CV(MCCs_train, MCCs_val, accs_train, accs_val, recall_train, recall_val, precision_train,
                         precision_val, F1_train, F1_val, balanced_acc_train, balanced_acc_val, test_acc, test_mcc,
                         test_recall, test_precision, test_f1, test_balanced_acc,
