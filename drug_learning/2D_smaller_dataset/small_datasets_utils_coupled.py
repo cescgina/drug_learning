@@ -64,8 +64,6 @@ def get_features(input_sdf, FINGERPRINT):
     else:
         print('Please select one of the three aviable fingerprints `Morgan`, `MACCS`, `RDKit`')
 
-"""
-#Commented to avoid problems with Power9
 def get_descriptors(smi_arr, activity_labels, clean_dataset=True, save_to_npy=True, filename='shared_set_features_mordred'):
     calc = Calculator(descriptors, ignore_3D=True)
     mols = [Chem.MolFromSmiles(smi) for smi in smi_arr]
@@ -78,7 +76,6 @@ def get_descriptors(smi_arr, activity_labels, clean_dataset=True, save_to_npy=Tr
         df_descriptors.to_csv(os.path.join("features", filename + ".npy"))
     return df_descriptors
 
-"""
 def compute_z_score(df_original):
     df=df_original.copy()
     headers = []

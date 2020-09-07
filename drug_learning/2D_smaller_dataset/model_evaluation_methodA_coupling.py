@@ -1,10 +1,13 @@
-from small_datasets_utils_coupled import *
-import CYP_data_generation as CYP
+import os
+from itertools import product
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
-from itertools import product
-import os
+from sklearn.preprocessing import normalize
+from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import train_test_split
+import CYP_data_generation as CYP
+import small_datasets_utils_coupled as utils
 from imblearn.under_sampling import RandomUnderSampler
 
 ###########  INPUTS ##############
@@ -123,9 +126,9 @@ labels_testing_2c9 = (testing_2c9_data["p450-cyp2c9 Activity Outcome"] == "Activ
 testing_3a4_data = pd.read_csv(os.path.join(PATH_DATA, "only_3a4_set_cyp.csv"))
 labels_testing_3a4 = (testing_3a4_data["p450-cyp3a4 Activity Outcome"] == "Active").values.astype(int)
 
-smi_col_shared = col_to_array(shared_data, 'CanonicalSMILES')
-smi_col_only2c9 = col_to_array(testing_2c9_data, 'CanonicalSMILES')
-smi_col_only3a4 = col_to_array(testing_3a4_data, 'CanonicalSMILES')
+smi_col_shared = utils.col_to_array(shared_data, 'CanonicalSMILES')
+smi_col_only2c9 = utils.col_to_array(testing_2c9_data, 'CanonicalSMILES')
+smi_col_only3a4 = utils.col_to_array(testing_3a4_data, 'CanonicalSMILES')
 
 # WARN get_fingerprints is a function that has to be changed if we change the dataset
 features_shared, features_only_2c9, features_only_3a4 = CYP.get_fingerprint(FINGERPRINT, PATH_DATA, PATH_FEAT)
@@ -135,13 +138,13 @@ if load_clean_data:
         descriptors_shared = pd.read_csv(os.path.join(PATH_FEAT, "shared_set_features_mordred_clean.npy")).drop(
             ['Unnamed: 0'], axis=1)
     else:
-        descriptors_shared = get_descriptors(smi_col_shared, labels_2c9, clean_dataset=True,
+        descriptors_shared = utils.get_descriptors(smi_col_shared, labels_2c9, clean_dataset=True,
                                              filename='shared_set_features_mordred_clean')
     if os.path.exists(os.path.join(PATH_FEAT, "only2c9_features_mordred_clean.npy")):
         descriptors_only2c9 = pd.read_csv(os.path.join(PATH_FEAT, "only2c9_features_mordred_clean.npy")).drop(
             ['Unnamed: 0'], axis=1)
     else:
-        descriptors_only2c9 = get_descriptors(smi_col_only2c9, labels_testing_2c9, clean_dataset=True,
+        descriptors_only2c9 = utils.get_descriptors(smi_col_only2c9, labels_testing_2c9, clean_dataset=True,
                                               filename='only2c9_features_mordred_clean')
     # if os.path.exists(os.path.join(PATH_FEAT, "only3a4_features_mordred_clean.npy")):
     #    descriptors_only3a4 = pd.read_csv(os.path.join(PATH_FEAT, "only3a4_features_mordred_clean.npy")).drop(
@@ -155,13 +158,13 @@ else:
         descriptors_shared = pd.read_csv(os.path.join(PATH_FEAT, "shared_set_features_mordred.npy")).drop(
             ['Unnamed: 0'], axis=1)
     else:
-        descriptors_shared = get_descriptors(smi_col_shared, labels_2c9, clean_dataset=False,
+        descriptors_shared = utils.get_descriptors(smi_col_shared, labels_2c9, clean_dataset=False,
                                              filename='shared_set_features_mordred')
     if os.path.exists(os.path.join(PATH_FEAT, "only2c9_features_mordred.npy")):
         descriptors_only2c9 = pd.read_csv(os.path.join("features", "only2c9_features_mordred.npy")).drop(['Unnamed: 0'],
                                                                                                          axis=1)
     else:
-        descriptors_only2c9 = get_descriptors(smi_col_only2c9, labels_testing_2c9, clean_dataset=False,
+        descriptors_only2c9 = utils.get_descriptors(smi_col_only2c9, labels_testing_2c9, clean_dataset=False,
                                               filename='only2c9_features_mordred')
     # if os.path.exists(os.path.join(PATH_FEAT, "only3a4_features_mordred.npy")):
     #    descriptors_only3a4 = pd.read_csv(os.path.join("features", "only3a4_features_mordred.npy")).drop(['Unnamed: 0'],
@@ -188,7 +191,7 @@ assert descriptors_shared.shape[1] == descriptors_only2c9.shape[1]
 if remove_outliers:
     threshold = 3
     if not os.path.exists(os.path.join(PATH_FEAT, "shared_set_features_mordred_clean_no_outliers.npy")):
-        descriptors_shared = drop_outliers(descriptors_shared, threshold=threshold)
+        descriptors_shared = utils.drop_outliers(descriptors_shared, threshold=threshold)
         descriptors_shared.to_csv(os.path.join(PATH_FEAT, 'shared_set_features_mordred_clean_no_outliers.npy'))
     descriptors_shared = pd.read_csv(os.path.join(PATH_FEAT, "shared_set_features_mordred_clean_no_outliers.npy"))
     loc = list(descriptors_shared['Unnamed: 0'])
@@ -196,7 +199,7 @@ if remove_outliers:
     descriptors_shared = descriptors_shared.drop(['Unnamed: 0'], axis=1)
 
     if not os.path.exists(os.path.join(PATH_FEAT, "only2c9_features_mordred_clean_no_outliers.npy")):
-        descriptors_only2c9 = drop_outliers(descriptors_only2c9, threshold=threshold)
+        descriptors_only2c9 = utils.drop_outliers(descriptors_only2c9, threshold=threshold)
         descriptors_only2c9.to_csv(os.path.join(PATH_FEAT, 'only2c9_features_mordred_clean_no_outliers.npy'))
     descriptors_only2c9 = pd.read_csv(os.path.join(PATH_FEAT, "only2c9_features_mordred_clean_no_outliers.npy"))
     loc = list(descriptors_only2c9['Unnamed: 0'])
@@ -349,7 +352,7 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
             if use_fingerprints:
                 train_data_fp, val_data_fp = train_val_data_fp[train_index], train_val_data_fp[val_index]
                 train_labels_fp, val_labels_fp = train_val_labels_fp[train_index], train_val_labels_fp[val_index]
-                data_fs_fp, best_fold_fp = get_best_features(train_data_fp, train_labels_fp, val_data_fp,
+                data_fs_fp, best_fold_fp = utils.get_best_features(train_data_fp, train_labels_fp, val_data_fp,
                                                              percetile_fingerprint)
                 best_features_split_fp.extend(list(best_fold_fp))
 
@@ -366,7 +369,7 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
             if use_descriptors:
                 train_data_des, val_data_des = train_val_data_des[train_index], train_val_data_des[val_index]
                 train_labels_des, val_labels_des = train_val_labels_des[train_index], train_val_labels_des[val_index]
-                data_fs_des, best_fold_des = get_best_features(train_data_des, train_labels_des, val_data_des,
+                data_fs_des, best_fold_des = utils.get_best_features(train_data_des, train_labels_des, val_data_des,
                                                                percetile_descriptors)
                 best_features_split_des.extend(list(best_fold_des))
 
@@ -402,44 +405,44 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
             print(f"-----------> Calculating split {split + 1}/{num_train_val_splits} fold {i + 1}/{folds} <----------")
 
             if not coupled_NN:
-                metrics_fold, pred_train, pred_val = training_model_CV(model, train_data, train_labels, val_data,
+                metrics_fold, pred_train, pred_val = utils.training_model_CV(model, train_data, train_labels, val_data,
                                                                        val_labels, metrics_fold, fold=i,
                                                                        metrics_ls=metrics_ls)
             else:
-                print(f"---> MODEL FOR FINGERPRINTS")
-                metrics_fold_fp, pred_train_fp, pred_val_fp = training_model_CV(
+                print("---> MODEL FOR FINGERPRINTS")
+                metrics_fold_fp, pred_train_fp, pred_val_fp = utils.training_model_CV(
                     model_fp[f'{FINGERPRINT}_{model_from_fp}'], train_data_fs_fp, train_labels, val_data_fs_fp,
                     val_labels, metrics_fold_fp, fold=i, metrics_ls=metrics_ls)
-                print(f"---> MODEL FOR DESCRIPTORS")
-                metrics_fold_des, pred_train_des, pred_val_des = training_model_CV(
+                print("---> MODEL FOR DESCRIPTORS")
+                metrics_fold_des, pred_train_des, pred_val_des = utils.training_model_CV(
                     model_des[f'{DESCRIPTOR}_{model_from_des}'], train_data_fs_des, train_labels, val_data_fs_des,
                     val_labels, metrics_fold_des, fold=i, metrics_ls=metrics_ls)
 
-                pred_coupled_train, coincidences_train = get_coupled_prediction(pred_train_fp, pred_train_des)
-                pred_coupled_val, coincidences_val = get_coupled_prediction(pred_val_fp, pred_val_des)
+                pred_coupled_train, coincidences_train = utils.get_coupled_prediction(pred_train_fp, pred_train_des)
+                pred_coupled_val, coincidences_val = utils.get_coupled_prediction(pred_val_fp, pred_val_des)
 
                 agr_train = 100 * len(train_labels[coincidences_train]) / len(train_labels)
                 agr_val = 100 * len(val_labels[coincidences_val]) / len(val_labels)
 
-                print(f"---> COUPLED MODEL")
+                print("---> COUPLED MODEL")
                 print(f"-----> Coupled Training fold {i + 1}")
                 print(f"Agreement_percentage_train {agr_train}")
-                dict_train = print_metrics(pred_coupled_train, train_labels[coincidences_train], agr_percentage=agr_train)
+                dict_train = utils.print_metrics(pred_coupled_train, train_labels[coincidences_train], agr_percentage=agr_train)
                 print(f"-----> Coupled Validation fold {i + 1}")
 
                 print(f"Agreement_percentage_val {agr_val}")
-                dict_val = print_metrics(pred_coupled_val, val_labels[coincidences_val], agr_percentage=agr_val)
+                dict_val = utils.print_metrics(pred_coupled_val, val_labels[coincidences_val], agr_percentage=agr_val)
 
                 metrics_fold['agreement_percentage_train'].append(agr_train)
                 metrics_fold['agreement_percentage_val'].append(agr_val)
 
-                metrics_fold = append_metrics_to_dict(metrics_fold, 'train', dict_train, 'val', dict_val,
+                metrics_fold = utils.append_metrics_to_dict(metrics_fold, 'train', dict_train, 'val', dict_val,
                                                       metrics_ls=metrics_ls)
 
                 del dict_train, dict_val, agr_train, agr_val
 
         if use_fingerprints:
-            best_feat_CV_fp = find_best_features(best_features_split_fp, data_fs_fp['train_data_fs'].shape[1])
+            best_feat_CV_fp = utils.find_best_features(best_features_split_fp, data_fs_fp['train_data_fs'].shape[1])
             train_val_data_fp = np.concatenate([train_data_fp, val_data_fp], axis=0)
 
             assert train_val_data_fp.shape[0] == train_data_fp.shape[0] + val_data_fp.shape[0]
@@ -455,7 +458,7 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                 test_data = test_data_fp
 
         if use_descriptors:
-            best_feat_CV_des = find_best_features(best_features_split_des, data_fs_des['train_data_fs'].shape[1])
+            best_feat_CV_des = utils.find_best_features(best_features_split_des, data_fs_des['train_data_fs'].shape[1])
             train_val_data_des = np.concatenate([train_data_des, val_data_des], axis=0)
 
             assert train_val_data_des.shape[0] == train_data_des.shape[0] + val_data_des.shape[0]
@@ -478,33 +481,33 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                 del metrics_fold_fp, metrics_fold_des
 
         if not coupled_NN:
-            metrics_split, dict_test, _ = train_predict_test(model, train_val_data_fs, labels_split, test_data,
+            metrics_split, dict_test, _ = utils.train_predict_test(model, train_val_data_fs, labels_split, test_data,
                                                              labels_testing_2c9, metrics_split, split=split)
-            metrics_split = append_metrics_to_dict(metrics_split, 'train', metrics_fold, 'val', metrics_fold,
+            metrics_split = utils.append_metrics_to_dict(metrics_split, 'train', metrics_fold, 'val', metrics_fold,
                                                    metrics_ls=metrics_ls)
         else:
-            print(f"---> MODEL FOR FINGERPRINTS")
-            metrics_split_fp, _, pred_test_fp = train_predict_test(model_fp[f'{FINGERPRINT}_{model_from_fp}'],
+            print("---> MODEL FOR FINGERPRINTS")
+            metrics_split_fp, _, pred_test_fp = utils.train_predict_test(model_fp[f'{FINGERPRINT}_{model_from_fp}'],
                                                                    train_val_data_fs_fp, labels_split, test_data_fp,
                                                                    labels_testing_2c9, metrics_split_fp, split=split)
-            print(f"---> MODEL FOR DESCRIPTORS")
-            metrics_split_des, _, pred_test_des = train_predict_test(model_des[f'{DESCRIPTOR}_{model_from_des}'],
+            print("---> MODEL FOR DESCRIPTORS")
+            metrics_split_des, _, pred_test_des = utils.train_predict_test(model_des[f'{DESCRIPTOR}_{model_from_des}'],
                                                                      train_val_data_fs_des, labels_split, test_data_des,
                                                                      labels_testing_2c9, metrics_split_des, split=split)
 
-            pred_coupled_test, coincidences_test = get_coupled_prediction(pred_test_fp, pred_test_des)
+            pred_coupled_test, coincidences_test = utils.get_coupled_prediction(pred_test_fp, pred_test_des)
             agr_test = 100 * len(labels_testing_2c9[coincidences_test]) / len(labels_testing_2c9)
 
-            dict_test = print_metrics(pred_coupled_test, labels_testing_2c9[coincidences_test], agr_percentage=agr_test)
+            dict_test = utils.print_metrics(pred_coupled_test, labels_testing_2c9[coincidences_test], agr_percentage=agr_test)
 
-            metrics_split = append_metrics_to_dict(metrics_split, 'test', dict_test, None, None, metrics_ls=metrics_ls)
+            metrics_split = utils.append_metrics_to_dict(metrics_split, 'test', dict_test, None, None, metrics_ls=metrics_ls)
             metrics_split['agreement_percentage_test'].append(agr_test)
 
-            metrics_split = append_metrics_to_dict(metrics_split, 'train', metrics_fold, 'val', metrics_fold,
+            metrics_split = utils.append_metrics_to_dict(metrics_split, 'train', metrics_fold, 'val', metrics_fold,
                                                    metrics_ls=metrics_ls + [
                                                        'agreement_percentage'])
 
-        plot_results_CV(metrics_fold['MCC_train'], metrics_fold['MCC_val'], metrics_fold['acc_train'],
+        utils.plot_results_CV(metrics_fold['MCC_train'], metrics_fold['MCC_val'], metrics_fold['acc_train'],
                         metrics_fold['acc_val'], metrics_fold['recall_train'], metrics_fold['recall_val'],
                         metrics_fold['precision_train'],
                         metrics_fold['precision_val'], metrics_fold['F1_train'], metrics_fold['F1_val'],
@@ -513,7 +516,7 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                         dict_test['recall'], dict_test['precision'], dict_test['F1'], dict_test['balanced_acc'],
                         filename=f'{PATH_CV_results}{percetile_fingerprint}-{percetile_descriptors}_fp-des_split{split + 1}')
 
-    plot_results_split(metrics_split['MCC_train'], metrics_split['MCC_val'], metrics_split['acc_train'],
+    utils.plot_results_split(metrics_split['MCC_train'], metrics_split['MCC_val'], metrics_split['acc_train'],
                        metrics_split['acc_val'], metrics_split['recall_train'], metrics_split['recall_val'],
                        metrics_split['precision_train'],
                        metrics_split['precision_val'], metrics_split['F1_train'], metrics_split['F1_val'],
@@ -581,5 +584,3 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
 
     df.to_csv(f'{PATH_SAVE}metrics_average_diff_percentile.csv',
               index=True)  # To read this file do -> df = pd.read_csv('path/metrics_average_diff_percentile.csv', index_col=0)
-
-
