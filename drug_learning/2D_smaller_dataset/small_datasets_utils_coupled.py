@@ -197,7 +197,11 @@ def plot_confusion(predicted_values, target_values, filename='confusion_matrix')
     plt.show()
 
 
-def print_metrics(predicted_values, target_values, verbose=True):
+def print_metrics(predicted_values, target_values, verbose=True, agr_percentage=1):
+    if agr_percentage == 0:
+        print('WARN: Agreement percentage was 0%, 0 were added to the metrics in dict')
+        return {'acc': 0, 'precision': 0, 'recall': 0, 'specificity': 0, 'MCC': 0, 'ner': 0,
+                'F1': 0, 'balanced_acc': 0}
     try:
         tn, fp, fn, tp = confusion_matrix(target_values, predicted_values >= 0.5).ravel()
         f1 = f1_score(target_values, predicted_values >= 0.5, average='binary')

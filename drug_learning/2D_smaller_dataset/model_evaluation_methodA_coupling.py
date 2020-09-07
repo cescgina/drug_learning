@@ -14,7 +14,7 @@ PATH_DATA = "../datasets/CYP/"  # f"{PATH}}datasets/CYP/"
 PATH_FEAT = 'features/'  # f"{PATH}}2D_smaller_dataset/features"
 
 
-FINGERPRINT = 'Morgan'
+FINGERPRINT = 'MACCS'
 DESCRIPTOR = 'Mordred'
 model_from_fp = 'Anna'
 model_from_des = 'Anna'
@@ -96,7 +96,7 @@ if balance_dataset:
 elif not balance_dataset:
     if use_fingerprints and use_descriptors:
         if coupled_NN:
-            PATH_SAVE = f"{PATH}2D_smaller_dataset/method_A/{FINGERPRINT}_{DESCRIPTOR}/Model_{model_from_des}/coupled/unbalanced_dataset/{dataset_size}molec/"
+            PATH_SAVE = f"{PATH}2D_smaller_dataset/method_A/{FINGERPRINT}_{DESCRIPTOR}/Model_{model_from_fp}/coupled/unbalanced_dataset/{dataset_size}molec/"
         else:
             PATH_SAVE = f"{PATH}2D_smaller_dataset/method_A/{FINGERPRINT}_{DESCRIPTOR}/Model_{model_from_des}/concatenated/unbalanced_dataset/{dataset_size}molec/"
     elif use_fingerprints:
@@ -424,16 +424,14 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                 print(f"---> COUPLED MODEL")
                 print(f"-----> Coupled Training fold {i + 1}")
                 print(f"Agreement_percentage_train {agr_train}")
-                dict_train = print_metrics(pred_coupled_train, train_labels[coincidences_train])
+                dict_train = print_metrics(pred_coupled_train, train_labels[coincidences_train], agr_percentage=agr_train)
                 print(f"-----> Coupled Validation fold {i + 1}")
-                print(f"Agreement_percentage_val {agr_val}")
-                dict_val = print_metrics(pred_coupled_val, val_labels[coincidences_val])
 
-                # New parameter!
-                metrics_fold['agreement_percentage_train'].append(
-                    100 * len(train_labels[coincidences_train]) / len(train_labels))
-                metrics_fold['agreement_percentage_val'].append(
-                    100 * len(val_labels[coincidences_val]) / len(val_labels))
+                print(f"Agreement_percentage_val {agr_val}")
+                dict_val = print_metrics(pred_coupled_val, val_labels[coincidences_val], agr_percentage=agr_val)
+
+                metrics_fold['agreement_percentage_train'].append(agr_train)
+                metrics_fold['agreement_percentage_val'].append(agr_val)
 
                 metrics_fold = append_metrics_to_dict(metrics_fold, 'train', dict_train, 'val', dict_val,
                                                       metrics_ls=metrics_ls)
@@ -495,16 +493,16 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                                                                      labels_testing_2c9, metrics_split_des, split=split)
 
             pred_coupled_test, coincidences_test = get_coupled_prediction(pred_test_fp, pred_test_des)
+            agr_test = 100 * len(labels_testing_2c9[coincidences_test]) / len(labels_testing_2c9)
 
-            dict_test = print_metrics(pred_coupled_test, labels_testing_2c9[coincidences_test])
+            dict_test = print_metrics(pred_coupled_test, labels_testing_2c9[coincidences_test], agr_percentage=agr_test)
 
             metrics_split = append_metrics_to_dict(metrics_split, 'test', dict_test, None, None, metrics_ls=metrics_ls)
-            metrics_split['agreement_percentage_test'].append(
-                100 * len(labels_testing_2c9[coincidences_test]) / len(labels_testing_2c9))
+            metrics_split['agreement_percentage_test'].append(agr_test)
 
             metrics_split = append_metrics_to_dict(metrics_split, 'train', metrics_fold, 'val', metrics_fold,
                                                    metrics_ls=metrics_ls + [
-                                                       'agreement_percentage'])  # No se si això funcionara de la metric_ls
+                                                       'agreement_percentage'])
 
         plot_results_CV(metrics_fold['MCC_train'], metrics_fold['MCC_val'], metrics_fold['acc_train'],
                         metrics_fold['acc_val'], metrics_fold['recall_train'], metrics_fold['recall_val'],
