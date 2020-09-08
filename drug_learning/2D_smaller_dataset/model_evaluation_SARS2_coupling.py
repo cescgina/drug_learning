@@ -111,32 +111,35 @@ data = pd.read_csv(os.path.join(PATH_DATA, "dataset_cleaned_SARS1_SARS2.csv"))
 features = np.load(os.path.join("..", "2D", "features", "SARS1_SARS2", "morgan.npy"))
 active = (data["activity_merged"] < threshold_activity).values.astype(int)
 
-if not os.path.exists(os.path.join(PATH_FEAT, 'SARS1_SARS2_mordred_clean_no_outliers.csv')):
+if os.path.exists(os.path.join(PATH_FEAT, "SARS1_SARS2_mordred.csv")):
+    df_descriptors=pd.read_csv(os.path.join(PATH_FEAT, "SARS1_SARS2_mordred.csv"))
+else:
     calc = Calculator(descriptors, ignore_3D=True)
     molecules_file = os.path.join(PATH_DATA, "molecules_cleaned_SARS1_SARS2.sdf")
     mols = list(Chem.SDMolSupplier(molecules_file))
     df_descriptors = calc.pandas(mols)
     df_descriptors = df_descriptors.apply(pd.to_numeric, errors='coerce')
     df_descriptors = df_descriptors.dropna(axis=1)
-    df_descriptors.to_csv(os.path.join("features", "SARS1_SARS2_mordred" + ".csv"))
+    df_descriptors.to_csv(os.path.join(PATH_FEAT, "SARS1_SARS2_mordred.csv"))
 
-    if remove_outliers:
-        threshold = 3
-        descriptors_shared = utils.drop_outliers(df_descriptors, threshold=threshold)
-        descriptors_shared["Molecule_index"] = range(descriptors_shared.shape[0])
-        descriptors_shared.to_csv(os.path.join(PATH_FEAT, 'SARS1_SARS2_mordred_clean_no_outliers.csv'))
-        loc = list(descriptors_shared['Molecule_index'])
-        features = features[loc, :]
-        active = active[loc]
-        if 'Unnamed: 0' in descriptors_shared.columns:
-            descriptors_shared = descriptors_shared.drop(['Unnamed: 0'], axis=1)
-else:
+if os.path.exists(os.path.join(PATH_FEAT, 'SARS1_SARS2_mordred_clean_no_outliers.csv')):
     descriptors_shared = pd.read_csv(os.path.join(PATH_FEAT, 'SARS1_SARS2_mordred_clean_no_outliers.csv'))
     loc = list(descriptors_shared['Molecule_index'])
     features = features[loc, :]
     active = active[loc]
     if 'Unnamed: 0' in descriptors_shared.columns:
         descriptors_shared = descriptors_shared.drop(['Unnamed: 0'], axis=1)
+else:
+    if remove_outliers:
+        threshold = 3
+        df_descriptors["Molecule_index"] = range(df_descriptors.shape[0])
+        descriptors_shared = utils.drop_outliers(df_descriptors, threshold=threshold)
+        descriptors_shared.to_csv(os.path.join(PATH_FEAT, 'SARS1_SARS2_mordred_clean_no_outliers.csv'))
+        loc = list(descriptors_shared['Molecule_index'])
+        features = features[loc, :]
+        active = active[loc]
+        if 'Unnamed: 0' in descriptors_shared.columns:
+            descriptors_shared = descriptors_shared.drop(['Unnamed: 0'], axis=1)
 
 
 dataset_size = min(dataset_size, descriptors_shared.shape[0])  # training + validation sets
