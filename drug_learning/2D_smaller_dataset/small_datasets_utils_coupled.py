@@ -1,4 +1,3 @@
-import os
 import random
 import numpy as np
 import numpy.testing as npt
@@ -203,11 +202,11 @@ def print_metrics(predicted_values, target_values, verbose=True, agr_percentage=
         return {'acc': 0, 'precision': 0, 'recall': 0, 'specificity': 0, 'MCC': 0, 'ner': 0,
                 'F1': 0, 'balanced_acc': 0}
     try:
-        tn, fp, fn, tp = confusion_matrix(target_values, predicted_values >= 0.5).ravel()
+        tn, fp, fn, tp = confusion_matrix(target_values, predicted_values >= 0.5, labels=[0,1]).ravel()
         f1 = f1_score(target_values, predicted_values >= 0.5, average='binary')
         balanced_accuracy = balanced_accuracy_score(target_values, predicted_values >= 0.5, sample_weight=None, adjusted=True)
     except TypeError:
-        tn, fp, fn, tp = confusion_matrix(target_values, predicted_values).ravel()
+        tn, fp, fn, tp = confusion_matrix(target_values, predicted_values, labels=[0,1]).ravel()
         f1 = f1_score(target_values, predicted_values, average='binary')
         balanced_accuracy = balanced_accuracy_score(target_values, predicted_values, sample_weight=None, adjusted=True)
     Sn = tp / (tp + fn)
@@ -263,12 +262,21 @@ def plot_results_CV(MCCs_train, MCCs_val, accs_train, accs_val, recall_train, re
     ax[1, 1].hlines(y=test_f1, linewidth=2, xmin=0, xmax=6, color='r')
     ax[1, 2].hlines(y=test_mcc, linewidth=2, xmin=0, xmax=6, color='r')
 
-    ax[0, 0].set_ylim(top=y_max, bottom=y_min)
-    ax[0, 1].set_ylim(top=y_max, bottom=y_min)
-    ax[0, 2].set_ylim(top=y_max, bottom=y_min)
-    ax[1, 0].set_ylim(top=y_max, bottom=y_min)
-    ax[1, 1].set_ylim(top=y_max, bottom=y_min)
-    ax[1, 2].set_ylim(top=y_max, bottom=y_min)
+    try:
+        ax[0, 0].set_ylim(top=y_max, bottom=y_min)
+        ax[0, 1].set_ylim(top=y_max, bottom=y_min)
+        ax[0, 2].set_ylim(top=y_max, bottom=y_min)
+        ax[1, 0].set_ylim(top=y_max, bottom=y_min)
+        ax[1, 1].set_ylim(top=y_max, bottom=y_min)
+        ax[1, 2].set_ylim(top=y_max, bottom=y_min)
+    except ValueError:
+        y_max, y_min = 1.1, -0.1
+        ax[0, 0].set_ylim(top=y_max, bottom=y_min)
+        ax[0, 1].set_ylim(top=y_max, bottom=y_min)
+        ax[0, 2].set_ylim(top=y_max, bottom=y_min)
+        ax[1, 0].set_ylim(top=y_max, bottom=y_min)
+        ax[1, 1].set_ylim(top=y_max, bottom=y_min)
+        ax[1, 2].set_ylim(top=y_max, bottom=y_min)
     ax[0, 0].set_xlim(left=0.5, right=2.5)
     ax[0, 1].set_xlim(left=0.5, right=2.5)
     ax[0, 2].set_xlim(left=0.5, right=2.5)
@@ -318,12 +326,21 @@ def plot_results_split(MCCs_train, MCCs_val, accs_train, accs_val, recall_train,
     ax[1, 2].boxplot([np.array(MCCs_train)[~np.isnan(MCCs_train)], np.array(MCCs_val)[~np.isnan(MCCs_val)],
                       np.array(test_mcc)[~np.isnan(test_mcc)]], labels=["Train", "Val", "Test"])
 
-    ax[0, 0].set_ylim(top=y_max, bottom=y_min)
-    ax[0, 1].set_ylim(top=y_max, bottom=y_min)
-    ax[0, 2].set_ylim(top=y_max, bottom=y_min)
-    ax[1, 0].set_ylim(top=y_max, bottom=y_min)
-    ax[1, 1].set_ylim(top=y_max, bottom=y_min)
-    ax[1, 2].set_ylim(top=y_max, bottom=y_min)
+    try:
+        ax[0, 0].set_ylim(top=y_max, bottom=y_min)
+        ax[0, 1].set_ylim(top=y_max, bottom=y_min)
+        ax[0, 2].set_ylim(top=y_max, bottom=y_min)
+        ax[1, 0].set_ylim(top=y_max, bottom=y_min)
+        ax[1, 1].set_ylim(top=y_max, bottom=y_min)
+        ax[1, 2].set_ylim(top=y_max, bottom=y_min)
+    except ValueError:
+        y_max, y_min = 1.1, -0.1
+        ax[0, 0].set_ylim(top=y_max, bottom=y_min)
+        ax[0, 1].set_ylim(top=y_max, bottom=y_min)
+        ax[0, 2].set_ylim(top=y_max, bottom=y_min)
+        ax[1, 0].set_ylim(top=y_max, bottom=y_min)
+        ax[1, 1].set_ylim(top=y_max, bottom=y_min)
+        ax[1, 2].set_ylim(top=y_max, bottom=y_min)
     ax[0, 0].set_ylabel("Accuracy")
     ax[0, 1].set_ylabel("Recall")
     ax[0, 2].set_ylabel("Precision")
