@@ -1,28 +1,26 @@
 import os
-import random
+import collections
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
-import collections
 import tensorflow as tf
-from scipy import stats
 import seaborn as sns
 import matplotlib
 import matplotlib.pyplot as plt
-from itertools import product
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.svm import SVC
-from sklearn.metrics import auc, roc_curve, f1_score, balanced_accuracy_score
+from sklearn.metrics import f1_score, balanced_accuracy_score
 from sklearn.metrics import confusion_matrix
-from sklearn.preprocessing import normalize #, minmax_scale it could also be tried.
 from sklearn.feature_selection import SelectPercentile, SelectKBest
 from sklearn.feature_selection import chi2, mutual_info_classif
-from sklearn.model_selection import StratifiedKFold
-from tensorboard.plugins.hparams import api as hp
 from sklearn.model_selection import train_test_split
-from sklearn.feature_selection import VarianceThreshold
 from rdkit import Chem, DataStructs
-#from mordred import Calculator, descriptors # To avoid problems with Power9
+from rdkit.Chem import AllChem, MACCSkeys
+try:
+    from mordred import Calculator, descriptors # To avoid problems with Power9
+    MORDRED_INSTALLED = True
+except ImportError:
+    MORDRED_INSTALLED = False
 
 
 plt.style.use("ggplot")
@@ -46,23 +44,22 @@ def get_features(input_sdf, FINGERPRINT):
             DataStructs.ConvertToNumpyArray(fp,arr)
             features.append(arr)
         return np.array(features)
-    elif FINGERPRINT == 'Morgan':
+    if FINGERPRINT == 'Morgan':
         for mol in structures_shared:
             fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=1024)
             arr = np.zeros((0,), dtype=np.int8)
             DataStructs.ConvertToNumpyArray(fp, arr)
             features.append(arr)
         return np.array(features)
-    elif FINGERPRINT == 'MACCS':
+    if FINGERPRINT == 'MACCS':
         for mol in structures_shared:
             fp = MACCSkeys.GenMACCSKeys(mol)
             arr = np.zeros((0,), dtype=np.int8)
             DataStructs.ConvertToNumpyArray(fp, arr)
             features.append(arr)
         return np.array(features)
-
-    else:
-        print('Please select one of the three aviable fingerprints `Morgan`, `MACCS`, `RDKit`')
+    print('Please select one of the three aviable fingerprints `Morgan`, `MACCS`, `RDKit`')
+    return None
 
 def get_descriptors(smi_arr, activity_labels, clean_dataset=True, save_to_npy=True, filename='shared_set_features_mordred'):
     calc = Calculator(descriptors, ignore_3D=True)
@@ -70,7 +67,7 @@ def get_descriptors(smi_arr, activity_labels, clean_dataset=True, save_to_npy=Tr
     df_descriptors = calc.pandas(mols)
     df_descriptors = df_descriptors.insert(0, "p450-cyp2c9 Activity Outcome", activity_labels, True)
     if clean_dataset:
-        df_descriptors = descriptors_shared.apply(pd.to_numeric, errors='coerce')
+        df_descriptors = df_descriptors.apply(pd.to_numeric, errors='coerce')
         df_descriptors = df_descriptors.dropna(axis=1)
     if save_to_npy:
         df_descriptors.to_csv(os.path.join("features", filename + ".npy"))
@@ -115,7 +112,7 @@ def split_features(features, labels, train_size=450, val_size=50, seed=1, plot_d
         ax[1].hist(val_labels)
         ax[1].set_xlabel("Validation set 2c9")
         plt.subplots_adjust(wspace=0.5)
-        plt.savefig(filename)
+        fig.savefig(filename)
         plt.show()
 
     return {'train_data': train_data, 'val_data': val_data, 'train_labels': train_labels, 'val_labels': val_labels}
@@ -123,9 +120,9 @@ def split_features(features, labels, train_size=450, val_size=50, seed=1, plot_d
 
 def select_features(X_train, Y_train, X_test, score_func=chi2, k_best=None, percentile=None):
     """score_func=chi2 (default), mutual_info_classif"""
-    if not k_best == None:
+    if k_best is not None:
         fs = SelectKBest(score_func=score_func, k=k_best)
-    elif not percentile == None:
+    elif percentile is not None:
         fs = SelectPercentile(score_func=score_func, percentile=percentile)
     else:
         print("Introduce the number of best features to be kept (`k_best`) or the percentile.")
@@ -161,19 +158,34 @@ def find_best_features(best_feat_split, num_feat):
     return [feat for feat, count in x.most_common(num_feat)]
 
 
-def generate_model(layers_dim, lr, dropout, optimizer, L2):
+def generate_model(model_dict, train_data):
     """layers_dim -- [n_input, n_hid_1, ..., n_output=1]"""
-    hidden_layers = []
-    for i in range(1, len(layers_dim) - 1): hidden_layers.extend([tf.keras.layers.Dropout(dropout)] + [
-        tf.keras.layers.Dense(layers_dim[i], activation="relu", kernel_regularizer=tf.keras.regularizers.l2(L2))])
-    model = tf.keras.models.Sequential([
-                                           tf.keras.layers.Dense(layers_dim[0], activation='relu',
-                                                                 input_shape=(layers_dim[0],))] +
-                                       hidden_layers +
-                                       [tf.keras.layers.Dense(layers_dim[-1], activation="sigmoid")])
-    loss_function = tf.keras.losses.BinaryCrossentropy()
-    model.compile(optimizer=optimizer, loss=loss_function,
-                  metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
+    if model_dict['type'] == "NN":
+        dropout = model_dict['dropout']
+        lr = model_dict['lr']
+        optimizer = model_dict['optimizer']
+        L2 = model_dict['L2']
+        layers_dim = model_dict['layers_dimensions'].copy()
+        if not layers_dim[0] == train_data.shape[1]:
+            layers_dim.insert(0, train_data.shape[1])
+        hidden_layers = []
+        for i in range(1, len(layers_dim) - 1):
+            hidden_layers.extend([tf.keras.layers.Dropout(dropout)] + [
+            tf.keras.layers.Dense(layers_dim[i], activation="relu", kernel_regularizer=tf.keras.regularizers.l2(L2))])
+        model = tf.keras.models.Sequential([
+                                               tf.keras.layers.Dense(layers_dim[0], activation='relu',
+                                                                     input_shape=(layers_dim[0],))] +
+                                           hidden_layers +
+                                           [tf.keras.layers.Dense(layers_dim[-1], activation="sigmoid")])
+        loss_function = tf.keras.losses.BinaryCrossentropy()
+        model.compile(optimizer=optimizer, loss=loss_function,
+                      metrics=['accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall()])
+    elif model_dict['type'] == 'svm':
+        C = model_dict['C']
+        kernel_name = model_dict.get('kernel', 'rbf')
+        gamma = model_dict.get('gamma', 'scale')
+        class_weight = model_dict.get('class_weight')
+        model = SVC(C=C, kernel=kernel_name, gamma=gamma, class_weight=class_weight)
     return model
 
 
@@ -185,10 +197,10 @@ def plot_confusion(predicted_values, target_values, filename='confusion_matrix')
     ax = plt.subplot()
     sns.heatmap(cm, annot=True, ax=ax, fmt="g", cmap="Greens")
     # labels, title and ticks
-    ax.set_xlabel('Predicted labels');
-    ax.set_ylabel('True labels');
-    ax.set_title('Confusion Matrix');
-    ax.xaxis.set_ticklabels(['Inactive', 'Active']);
+    ax.set_xlabel('Predicted labels')
+    ax.set_ylabel('True labels')
+    ax.set_title('Confusion Matrix')
+    ax.xaxis.set_ticklabels(['Inactive', 'Active'])
     ax.yaxis.set_ticklabels(['Inactive', 'Active'])
     plt.savefig(filename)
     plt.show()
@@ -215,7 +227,7 @@ def print_metrics(predicted_values, target_values, verbose=True, agr_percentage=
     mcc = (tp * tn - fp * fn) / np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
     #f1 = 2 * precision * recall / (precision + recall)
     #balanced_accuracy = Sp * recall / 2
-    
+
     if verbose:
         print(
             f"NER: {ner:.3f}, Sensitivity or recall: {Sn:.3f}, Specificity: {Sp:.3f}, Precision: {precision:.3f}, Correctly classified: {accuracy:.3f}, MCC: {mcc:.3f}, F1 score: {f1:.3f}, Balanced accuracy: {balanced_accuracy:.3f}")
@@ -225,7 +237,8 @@ def print_metrics(predicted_values, target_values, verbose=True, agr_percentage=
 
 def plot_results_CV(MCCs_train, MCCs_val, accs_train, accs_val, recall_train, recall_val, precision_train,
                     precision_val, F1_train, F1_val, balanced_acc_train, balanced_acc_val, test_acc, test_mcc,
-                    test_recall, test_precision, test_f1, test_balanced_acc, filename='CV_results'):
+                    test_recall, test_precision, test_f1, test_balanced_acc,
+                    filename='CV_results', show_plots=True):
     fig, ax = plt.subplots(2, 3, figsize=(16, 16))
     y_min = -0.1 + np.nanmin(
         [np.nanmin(balanced_acc_train), np.nanmin(balanced_acc_val), np.nanmin(test_balanced_acc), np.nanmin(F1_train),
@@ -280,13 +293,15 @@ def plot_results_CV(MCCs_train, MCCs_val, accs_train, accs_val, recall_train, re
     ax[1, 2].set_ylabel("MCC")
 
     plt.tight_layout()
-    plt.savefig(filename)
-    plt.show()
+    fig.savefig(filename)
+    if show_plots:
+        plt.show()
 
 
 def plot_results_split(MCCs_train, MCCs_val, accs_train, accs_val, recall_train, recall_val, precision_train,
                        precision_val, F1_train, F1_val, balanced_acc_train, balanced_acc_val, test_mcc, test_acc,
-                       test_recall, test_precision, test_f1, test_balanced_acc, filename='CV_results_1split'):
+                       test_recall, test_precision, test_f1, test_balanced_acc,
+                       filename='CV_results_1split', show_plots=True):
     fig, ax = plt.subplots(2, 3, figsize=(16, 16))
     y_min = -0.1 + np.nanmin(
         [np.nanmin(balanced_acc_train), np.nanmin(balanced_acc_val), np.nanmin(test_balanced_acc), np.nanmin(F1_train),
@@ -329,42 +344,9 @@ def plot_results_split(MCCs_train, MCCs_val, accs_train, accs_val, recall_train,
     ax[1, 2].set_ylabel("MCC")
 
     plt.tight_layout()
-    plt.savefig(filename)
-    plt.show()
-
-
-def select_features(X_train, Y_train, X_test, score_func=chi2, k_best=None, percentile=None):
-    """score_func=chi2 (default), mutual_info_classif"""
-    if not k_best == None:
-        fs = SelectKBest(score_func=score_func, k=k_best)
-    elif not percentile == None:
-        fs = SelectPercentile(score_func=score_func, percentile=percentile)
-    else:
-        print("Introduce the number of best features to be kept (`k_best`) or the percentile.")
-        return
-    fs.fit(X_train, Y_train)
-    X_train_fs = fs.transform(X_train)
-    X_test_fs = fs.transform(X_test)
-
-    return X_train_fs, X_test_fs, fs
-
-
-def plot_score(fs, print_scores=False, filename='plt_score'):
-    """plot the score for all the features"""
-    if print_scores:
-        for i in range(len(fs.scores_)):
-            print('Feature %d: %f' % (i, fs.scores_[i]))
-    plt.bar([i for i in range(len(fs.scores_))], fs.scores_)
-    plt.figsave(filename)
-    plt.show()
-
-
-def get_best_features_index(fs):
-    """Returns a numpy array with the indexs of the best features."""
-    mask = fs.get_support()
-    best_features_tup = np.where(mask == True)
-
-    return best_features_tup[0]
+    fig.savefig(filename)
+    if show_plots:
+        plt.show()
 
 
 def get_best_features(train_data, train_labels, val_data, percentile):
@@ -425,13 +407,15 @@ def select_feat_and_get_best_feat_per_split(use_fingerprints, use_descriptors, f
 
         return data_fs_fp, data_fs_des, best_feat_index_fp, best_feat_index_des
 
-    
-def append_metrics_to_dict(metrics_dict, name_set_1, dict_1, name_set_2=None, dict_2=None,  metrics_ls = ['MCC', 'acc', 'recall', 'precision', 'F1', 'balanced_acc']):
+
+def append_metrics_to_dict(metrics_dict, name_set_1, dict_1, name_set_2=None, dict_2=None, metrics_ls=None):
     """
     All the metrics in `dict_1` and/or `dict_2` are saved into `metrics_dict` with key = metric_name_set1, ie. MCC_train.
     If dict_1=dict_2, it's used another nomenclature to avoid an error when copying the data from fold dict to split dict
     """
-    if dict_2 == None:
+    if metrics_ls is None:
+        metrics_ls = ['MCC', 'acc', 'recall', 'precision', 'F1', 'balanced_acc']
+    if dict_2 is None:
         for metric in metrics_ls:
             metrics_dict[f'{metric}_{name_set_1}'].append(dict_1[f'{metric}'])
     elif dict_1 == dict_2:
@@ -442,18 +426,18 @@ def append_metrics_to_dict(metrics_dict, name_set_1, dict_1, name_set_2=None, di
         for metric in metrics_ls:
             metrics_dict[f'{metric}_{name_set_1}'].append(dict_1[f'{metric}'])
             metrics_dict[f'{metric}_{name_set_2}'].append(dict_2[f'{metric}'])
-            
     return metrics_dict
 
-def training_model_CV(model_dict, train_data, train_labels, val_data, val_labels, metrics_dict, metrics_ls = ['MCC', 'acc', 'recall', 'precision', 'F1', 'balanced_acc'], fold=0):
-    layers_dim = model_dict['layers_dimensions'].copy()
-    class_weights = compute_class_weight('balanced', classes=np.unique(train_labels), y=train_labels)
-    class_weight = {0: class_weights[0], 1: class_weights[1]}
-    
-    if not layers_dim[0] == train_data.shape[1]:
-        layers_dim.insert(0, train_data.shape[1])
-    model = generate_model(layers_dim, model_dict['lr'], model_dict['dropout'], model_dict['optimizer'], model_dict['L2'])
-    history = model.fit(train_data, train_labels, epochs=10, verbose=0, class_weight=class_weight)  # , validation_data = (val_data, val_labels))
+def training_model_CV(model_dict, train_data, train_labels, val_data, val_labels, metrics_dict, metrics_ls=None, fold=0):
+    if metrics_ls is None:
+        metrics_ls = ['MCC', 'acc', 'recall', 'precision', 'F1', 'balanced_acc']
+    model = generate_model(model_dict, train_data)
+    if model_dict['type'] == 'NN':
+        class_weights = compute_class_weight('balanced', classes=np.unique(train_labels), y=train_labels)
+        class_weight = {0: class_weights[0], 1: class_weights[1]}
+        model.fit(train_data, train_labels, epochs=10, verbose=0, class_weight=class_weight)  # , validation_data = (val_data, val_labels))
+    else:
+        model.fit(train_data, train_labels)
 
     print(f"---> Trainig set fold {fold + 1}")
     pred_train = model.predict(train_data)
@@ -463,43 +447,40 @@ def training_model_CV(model_dict, train_data, train_labels, val_data, val_labels
     dict_val = print_metrics(pred_val, val_labels)
 
     metrics_dict = append_metrics_to_dict(metrics_dict, 'train', dict_train, 'val', dict_val, metrics_ls=metrics_ls)
-        
     return metrics_dict, pred_train, pred_val
 
-def train_predict_test(model_dict, train_data, train_labels, test_data, test_labels, metrics_dict, metrics_ls = ['MCC', 'acc', 'recall', 'precision', 'F1', 'balanced_acc'], split=0):
-    layers_dim = model_dict['layers_dimensions'].copy()
-    class_weights = compute_class_weight('balanced', classes=np.unique(train_labels), y=train_labels)
-    class_weight = {0: class_weights[0], 1: class_weights[1]}
-    
-    if not layers_dim[0] == train_data.shape[1]:
-        layers_dim.insert(0, train_data.shape[1])
-    model = generate_model(layers_dim, model_dict['lr'], model_dict['dropout'], model_dict['optimizer'], model_dict['L2'])
-    history = model.fit(train_data, train_labels, epochs=10, verbose=0, class_weight=class_weight)  # , validation_data = (val_data, val_labels))
+
+def train_predict_test(model_dict, train_data, train_labels, test_data, test_labels, metrics_dict, metrics_ls=None, split=0):
+    if metrics_ls is None:
+        metrics_ls = ['MCC', 'acc', 'recall', 'precision', 'F1', 'balanced_acc']
+    model = generate_model(model_dict, train_data)
+    if model_dict['type'] == 'NN':
+        class_weights = compute_class_weight('balanced', classes=np.unique(train_labels), y=train_labels)
+        class_weight = {0: class_weights[0], 1: class_weights[1]}
+        model.fit(train_data, train_labels, epochs=10, verbose=0, class_weight=class_weight)  # , validation_data = (val_data, val_labels))
+    else:
+        model.fit(train_data, train_labels)
 
     print(f"---> Test set split {split + 1}")
     pred_test = model.predict(test_data)
     dict_test = print_metrics(pred_test, test_labels)
 
     metrics_dict = append_metrics_to_dict(metrics_dict, 'test', dict_test, None, None, metrics_ls=metrics_ls)
-        
     return metrics_dict, dict_test, pred_test
 
 def get_coupled_prediction(pred_fp, pred_des, labels=None):
     assert pred_fp.shape[0]==pred_des.shape[0], "The arrays do not have the same number of predicctions."
-    i=0
     coincidences = []
     pred_coupled = []
-    for fp, des in zip(pred_fp>=0.5, pred_des>=0.5):
+    for i, (fp, des) in enumerate(zip(pred_fp>=0.5, pred_des>=0.5)):
         if fp == des:
-            pred_coupled.append(fp[0])
+            pred_coupled.append(fp)
             coincidences.append(i)
-        i+=1
-    
+
     assert len(coincidences) == len(pred_coupled), "Something went wrong. `coincidences` and `pred_coupled` should have the same length. "
-    
-    if not labels == None:
+
+    if not labels is None:
         coincident_labels = labels[coincidences]
         return pred_coupled, coincident_labels
-    
-    return pred_coupled, coincidences
 
+    return pred_coupled, coincidences
