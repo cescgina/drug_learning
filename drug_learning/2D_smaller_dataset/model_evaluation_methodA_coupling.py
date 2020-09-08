@@ -63,22 +63,22 @@ elif use_fingerprints and use_descriptors:
         print("Fingerprints and descriptors are going to be used (concatenated).")
 
 model_fp = {
-    'Morgan_Anna': {'layers_dimensions': [130, 130, 130, 130, 130, 130, 1], 'lr':0.001, 'dropout':0.2, 'optimizer':'adam', 'L2':0.001},
-    'Morgan_Joan': {'layers_dimensions': [256,256,256,256,256,256,256,256,1], 'lr':0.1, 'dropout':0.2, 'optimizer':'sgd', 'L2':0.001},
-    'MACCS_Anna': {'layers_dimensions': [70, 70, 70, 70, 1], 'lr':0.01, 'dropout':0.2, 'optimizer':'adam', 'L2':0.001},
-    'MACCS_Joan': {'layers_dimensions': [150,150,150,150,1], 'lr':0.001, 'dropout':0.2, 'optimizer':'sgd', 'L2':0.001},
-    'RDKit_Anna': {'layers_dimensions': [90, 90, 90, 90, 1], 'lr':0.1, 'dropout':0.2, 'optimizer':'sgd', 'L2':0.001},
-    'RDKit_Joan': {'layers_dimensions': [130,130,130,130,1], 'lr':0.1, 'dropout':0.2, 'optimizer':'sgd', 'L2':0.001},
+    'Morgan_Anna': {'layers_dimensions': [130, 130, 130, 130, 130, 130, 1], 'lr':0.001, 'dropout':0.2, 'optimizer':'adam', 'L2':0.001, 'type': 'NN', 'class_weight': 'balanced'},
+    'Morgan_Joan': {'layers_dimensions': [256,256,256,256,256,256,256,256,1], 'lr':0.1, 'dropout':0.2, 'optimizer':'sgd', 'L2':0.001}, 'type': 'NN', 'class_weight': 'balanced',
+    'MACCS_Anna': {'layers_dimensions': [70, 70, 70, 70, 1], 'lr':0.01, 'dropout':0.2, 'optimizer':'adam', 'L2':0.001, 'type': 'NN', 'class_weight': 'balanced'},
+    'MACCS_Joan': {'layers_dimensions': [150,150,150,150,1], 'lr':0.001, 'dropout':0.2, 'optimizer':'sgd', 'L2':0.001, 'type': 'NN', 'class_weight': 'balanced'},
+    'RDKit_Anna': {'layers_dimensions': [90, 90, 90, 90, 1], 'lr':0.1, 'dropout':0.2, 'optimizer':'sgd', 'L2':0.001, 'type': 'NN', 'class_weight': 'balanced'},
+    'RDKit_Joan': {'layers_dimensions': [130,130,130,130,1], 'lr':0.1, 'dropout':0.2, 'optimizer':'sgd', 'L2':0.001, 'type': 'NN', 'class_weight': 'balanced'},
     }
 
 model_des = {
-    'Mordred_Anna': {'layers_dimensions': [90, 90, 90, 1], 'lr':0.001, 'dropout':0.2, 'optimizer':'RMSprop', 'L2':0.01}
+    'Mordred_Anna': {'layers_dimensions': [90, 90, 90, 1], 'lr':0.001, 'dropout':0.2, 'optimizer':'RMSprop', 'L2':0.01, 'type': 'NN', 'class_weight': 'balanced'}
     }
 
 model_fp_des = {
-    'Morgan_Mordred_Anna': {'layers_dimensions': [70, 70, 70, 1], 'lr':0.01, 'dropout':0.5, 'optimizer':'adam', 'L2':0.01},
-    'MACCS_Mordred_Anna': {'layers_dimensions': [30, 30, 30, 30, 30, 1], 'lr':0.001, 'dropout':0.2, 'optimizer':'RMSprop', 'L2':0.001},
-    'RDKit_Mordred_Anna': {'layers_dimensions': [30, 30, 30, 30, 1], 'lr':0.01, 'dropout':0.2, 'optimizer':'sgd', 'L2':0.001},
+    'Morgan_Mordred_Anna': {'layers_dimensions': [70, 70, 70, 1], 'lr':0.01, 'dropout':0.5, 'optimizer':'adam', 'L2':0.01, 'type': 'NN', 'class_weight': 'balanced'},
+    'MACCS_Mordred_Anna': {'layers_dimensions': [30, 30, 30, 30, 30, 1], 'lr':0.001, 'dropout':0.2, 'optimizer':'RMSprop', 'L2':0.001, 'type': 'NN', 'class_weight': 'balanced'},
+    'RDKit_Mordred_Anna': {'layers_dimensions': [30, 30, 30, 30, 1], 'lr':0.01, 'dropout':0.2, 'optimizer':'sgd', 'L2':0.001, 'type': 'NN', 'class_weight': 'balanced'},
     }
 
 
@@ -115,7 +115,7 @@ if not os.path.exists(PATH_CV_results):
 if not os.path.exists(PATH_confusion):
     os.makedirs(PATH_confusion)
 
-print(f'Data is going to be save at: {PATH_SAVE}')
+print(f'Data is going to be saved at: {PATH_SAVE}')
 
 
 shared_data = pd.read_csv(os.path.join(PATH_DATA, "shared_set_cyp.csv"))
