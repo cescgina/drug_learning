@@ -86,7 +86,7 @@ print(f'Random seeds: {rand_num}')
 if balance_dataset:
     if use_fingerprints and use_descriptors:
         if coupled_NN:
-            PATH_SAVE = f"{PATH}2D_smaller_dataset/method_A/{FINGERPRINT}_{DESCRIPTOR}/Model_{model_from_des}/coupled/balanced_dataset/{dataset_size}molec/"
+            PATH_SAVE = f"{PATH}2D_smaller_dataset/method_A/{FINGERPRINT}_{DESCRIPTOR}/Model_{model_from_fp}/coupled/balanced_dataset/{dataset_size}molec/"
         else:
             PATH_SAVE = f"{PATH}2D_smaller_dataset/method_A/{FINGERPRINT}_{DESCRIPTOR}/Model_{model_from_des}/concatenated/balanced_dataset/{dataset_size}molec/"
     elif use_fingerprints:
@@ -425,8 +425,8 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                 print(f"-----> Coupled Training fold {i + 1}")
                 print(f"Agreement_percentage_train {agr_train}")
                 dict_train = print_metrics(pred_coupled_train, train_labels[coincidences_train], agr_percentage=agr_train)
-                print(f"-----> Coupled Validation fold {i + 1}")
 
+                print(f"-----> Coupled Validation fold {i + 1}")
                 print(f"Agreement_percentage_val {agr_val}")
                 dict_val = print_metrics(pred_coupled_val, val_labels[coincidences_val], agr_percentage=agr_val)
 
