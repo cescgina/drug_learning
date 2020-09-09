@@ -77,8 +77,10 @@ def compute_z_score(df_original):
     df=df_original.copy()
     headers = []
     for col in df.columns:
-        df[f'{col}_zscore'] = (df[col] - df[col].mean())/df[col].std(ddof=0)
         headers.append(col)
+        if col == "Molecule_index":
+            continue
+        df[f'{col}_zscore'] = (df[col] - df[col].mean())/df[col].std(ddof=0)
     return df, headers
 
 
@@ -92,13 +94,23 @@ def outliers_detection(df, threshold=3):
 
 def drop_outliers(df, threshold=3):
     df_outlier, zscore_col = outliers_detection(df, threshold=threshold)
-    for col in zscore_col:
-        index = df_outlier[ df_outlier[f'{col}_outlier'] == 1 ].index
-        df_outlier.drop(index , inplace=True)
-        df_outlier.drop(col , inplace=True,axis = 1)
-        df_outlier.drop(f'{col}_outlier' , inplace=True, axis = 1)
+    for col in df.columns:
+        if col == "Molecule_index":
+            continue
+        if df_outlier[f'{col}_zscore_outlier'].sum() > 0:
+            df_outlier.drop(col , inplace=True,axis = 1)
+        df_outlier.drop(f'{col}_zscore_outlier', inplace=True, axis=1)
+        df_outlier.drop(f'{col}_zscore', inplace=True, axis = 1)
     return df_outlier
 
+def drop_outliers_samples(df, threshold=3):
+    df_outlier, zscore_col = outliers_detection(df, threshold=threshold)
+    for col in zscore_col:
+        index = df_outlier[df_outlier[f'{col}_outlier'] == 1].index
+        df_outlier.drop(index, inplace=True)
+        df_outlier.drop(col, inplace=True, axis=1)
+        df_outlier.drop(f'{col}_outlier', inplace=True, axis=1)
+    return df_outlier
 
 def split_features(features, labels, train_size=450, val_size=50, seed=1, plot_distribution=False, filename='labels_distribution'):
     train_data, val_data, train_labels, val_labels = train_test_split(features, labels, train_size=train_size,
