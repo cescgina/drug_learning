@@ -498,16 +498,15 @@ def train_predict_test(model_dict, train_data, train_labels, test_data, test_lab
     metrics_dict = append_metrics_to_dict(metrics_dict, 'test', dict_test, None, None, metrics_ls=metrics_ls)
     return metrics_dict, dict_test, pred_test
 
-def get_coupled_prediction(pred_fp, pred_des, labels=None):
+def get_coupled_prediction(pred_fp, pred_des, labels=None, criteria="unanimous"):
     assert pred_fp.shape[0]==pred_des.shape[0], "The arrays do not have the same number of predicctions."
-    coincidences = []
-    pred_coupled = []
-    for i, (fp, des) in enumerate(zip(pred_fp>=0.5, pred_des>=0.5)):
-        if fp == des:
-            pred_coupled.append(fp)
-            coincidences.append(i)
-
-    assert len(coincidences) == len(pred_coupled), "Something went wrong. `coincidences` and `pred_coupled` should have the same length. "
+    pred_fp_pos = pred_fp >= 0.5
+    pred_des_pos = pred_des >= 0.5
+    coincidences = np.where(pred_fp_pos & pred_des_pos)[0]
+    if criteria == "unanimous":
+        pred_coupled = pred_fp_pos & pred_des_pos
+    elif  criteria == "any_positive":
+        pred_coupled = pred_fp_pos | pred_des_pos
 
     if not labels is None:
         coincident_labels = labels[coincidences]
