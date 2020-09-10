@@ -41,8 +41,8 @@ train_size = int(0.75 * dataset_size)
 test_size = dataset_size-train_size
 
 seed = 1
-num_train_val_splits = 2 # Number of splits of the whole dataset
-folds = 2 # Number of folds in cross-validation
+num_train_val_splits = 10 # Number of splits of the whole dataset
+folds = 10 # Number of folds in cross-validation
 
 load_clean_data = True  # Otherwise it will load data with NaN
 remove_outliers = True
@@ -134,12 +134,12 @@ else:
         threshold = 3
         df_descriptors["Molecule_index"] = range(df_descriptors.shape[0])
         descriptors_shared = utils.drop_outliers(df_descriptors, threshold=threshold)
+        if 'Unnamed: 0' in descriptors_shared.columns:
+            descriptors_shared = descriptors_shared.drop(['Unnamed: 0'], axis=1)
         descriptors_shared.to_csv(os.path.join(PATH_FEAT, 'SARS1_SARS2_mordred_clean_no_outliers.csv'))
         loc = list(descriptors_shared['Molecule_index'])
         features = features[loc, :]
         active = active[loc]
-        if 'Unnamed: 0' in descriptors_shared.columns:
-            descriptors_shared = descriptors_shared.drop(['Unnamed: 0'], axis=1)
 
 
 dataset_size = min(dataset_size, descriptors_shared.shape[0])  # training + validation sets
@@ -337,11 +337,13 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                 print("---> COUPLED MODEL")
                 print(f"-----> Coupled Training fold {i + 1}")
                 print(f"Agreement_percentage_train {agr_train}")
-                dict_train = utils.print_metrics(pred_coupled_train, train_labels[coincidences_train], agr_percentage=agr_train)
+                # dict_train = utils.print_metrics(pred_coupled_train, train_labels[coincidences_train], agr_percentage=agr_train)
+                dict_train = utils.print_metrics(pred_coupled_train, train_labels, agr_percentage=agr_train)
                 print(f"-----> Coupled Validation fold {i + 1}")
 
                 print(f"Agreement_percentage_val {agr_val}")
-                dict_val = utils.print_metrics(pred_coupled_val, val_labels[coincidences_val], agr_percentage=agr_val)
+                # dict_val = utils.print_metrics(pred_coupled_val, val_labels[coincidences_val], agr_percentage=agr_val)
+                dict_val = utils.print_metrics(pred_coupled_val, val_labels, agr_percentage=agr_val)
 
                 metrics_fold['agreement_percentage_train'].append(agr_train)
                 metrics_fold['agreement_percentage_val'].append(agr_val)
@@ -409,7 +411,8 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
             pred_coupled_test, coincidences_test = utils.get_coupled_prediction(pred_test_fp, pred_test_des)
             agr_test = 100 * len(test_labels_fp[coincidences_test]) / len(test_labels_fp)
 
-            dict_test = utils.print_metrics(pred_coupled_test, test_labels_fp[coincidences_test], agr_percentage=agr_test)
+            # dict_test = utils.print_metrics(pred_coupled_test, test_labels_fp[coincidences_test], agr_percentage=agr_test)
+            dict_test = utils.print_metrics(pred_coupled_test, test_labels_fp, agr_percentage=agr_test)
 
             metrics_split = utils.append_metrics_to_dict(metrics_split, 'test', dict_test, None, None, metrics_ls=metrics_ls)
             metrics_split['agreement_percentage_test'].append(agr_test)
@@ -425,8 +428,7 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                         metrics_fold['balanced_acc_train'], metrics_fold['balanced_acc_val'], dict_test['acc'],
                         dict_test['MCC'],
                         dict_test['recall'], dict_test['precision'], dict_test['F1'], dict_test['balanced_acc'],
-                        filename=f'{PATH_CV_results}{percetile_fingerprint}-{percetile_descriptors}_fp-des_split{split + 1}', 
-                        show_plots=show_plots)
+                        filename=f'{PATH_CV_results}{percetile_fingerprint}-{percetile_descriptors}_fp-des_split{split + 1}', show_plots=show_plots)
 
     utils.plot_results_split(metrics_split['MCC_train'], metrics_split['MCC_val'], metrics_split['acc_train'],
                        metrics_split['acc_val'], metrics_split['recall_train'], metrics_split['recall_val'],
@@ -436,8 +438,7 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                        metrics_split['MCC_test'], metrics_split['acc_test'],
                        metrics_split['recall_test'], metrics_split['precision_test'], metrics_split['F1_test'],
                        metrics_split['balanced_acc_test'],
-                       filename=f'{PATH_CV_results}Average_{percetile_fingerprint}-{percetile_descriptors}_fp-des.png',
-                       show_plots=show_plots)
+                       filename=f'{PATH_CV_results}Average_{percetile_fingerprint}-{percetile_descriptors}_fp-des.png', show_plots=show_plots)
 
     if not coupled_NN:
         df[f'{percetile_fingerprint}:{percetile_descriptors}'] = [np.nanmean(metrics_split['MCC_val']),
@@ -495,5 +496,4 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                                                                       metrics_split['agreement_percentage_test']),
                                                                   np.nanstd(metrics_split['agreement_percentage_test'])]
 
-    df.to_csv(f'{PATH_SAVE}metrics_average_diff_percentile.csv',
-              index=True)  # To read this file do -> df = pd.read_csv('path/metrics_average_diff_percentile.csv', index_col=0)
+    df.to_csv(f'{PATH_SAVE}metrics_average_diff_percentile.csv', index=True)  # To read this file do -> df = pd.read_csv('path/metrics_average_diff_percentile.csv', index_col=0)
