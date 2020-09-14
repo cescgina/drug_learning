@@ -55959,3 +55959,28 @@ $$$$
  34 36  1  0
  34 37  1  0
 M  END
+>  <s_m_entry_id>  (565) 
+1368
+
+>  <s_m_entry_name>  (565) 
+3C-like_protease_GHDDI_ligprep.987
+
+>  <s_m_Source_Path>  (565) 
+/home/jgilaber/drug_learning/drug_learning/datasets/SAR1/GHDDI
+
+>  <s_m_Source_File>  (565) 
+3C-like_protease_GHDDI_ligprep.sdf
+
+>  <i_m_Source_File_Index>  (565) 
+987
+
+>  <s_m_subgroup_title>  (565) 
+3C-like_protease_GHDDI_ligprep
+
+>  <s_m_subgroupid>  (565) 
+3C-like_protease_GHDDI_ligprep
+
+>  <b_m_subgroup_collapsed>  (565) 
+0
+
+$$$$
