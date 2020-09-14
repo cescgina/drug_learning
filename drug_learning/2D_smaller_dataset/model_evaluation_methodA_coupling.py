@@ -46,6 +46,10 @@ load_clean_data = True  # Otherwise it will load data with NaN
 remove_outliers = True
 normalize_descriptors = True
 
+# Option used when coupled_NN = True
+data_selection = 'only_coincidences' # 'only_coincidences' to only use the coincident predictions or 'all' if you want to use all
+selection_criteria = 'unanimous' # 'unanimous' if both predictions must be true or "any_positive" if we want to keep all the positives
+
 ##################################
 
 if use_fingerprints and not use_descriptors:
@@ -418,8 +422,8 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                     model_des[f'{DESCRIPTOR}_{model_from_des}'], train_data_fs_des, train_labels, val_data_fs_des,
                     val_labels, metrics_fold_des, fold=i, metrics_ls=metrics_ls)
 
-                pred_coupled_train, coincidences_train = utils.get_coupled_prediction(pred_train_fp, pred_train_des)
-                pred_coupled_val, coincidences_val = utils.get_coupled_prediction(pred_val_fp, pred_val_des)
+                pred_coupled_train, coincidences_train = utils.get_coupled_prediction(pred_train_fp, pred_train_des, selection=data_selection, criteria=selection_criteria)
+                pred_coupled_val, coincidences_val = utils.get_coupled_prediction(pred_val_fp, pred_val_des, selection=data_selection, criteria=selection_criteria)
 
                 agr_train = 100 * len(train_labels[coincidences_train]) / len(train_labels)
                 agr_val = 100 * len(val_labels[coincidences_val]) / len(val_labels)
@@ -494,7 +498,7 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                                                                      train_val_data_fs_des, labels_split, test_data_des,
                                                                      labels_testing_2c9, metrics_split_des, split=split)
 
-            pred_coupled_test, coincidences_test = utils.get_coupled_prediction(pred_test_fp, pred_test_des)
+            pred_coupled_test, coincidences_test = utils.get_coupled_prediction(pred_test_fp, pred_test_des, selection=data_selection, criteria=selection_criteria)
             agr_test = 100 * len(labels_testing_2c9[coincidences_test]) / len(labels_testing_2c9)
 
             dict_test = utils.print_metrics(pred_coupled_test, labels_testing_2c9[coincidences_test], agr_percentage=agr_test)
