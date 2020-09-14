@@ -184,10 +184,8 @@ def generate_model(model_dict, train_data):
         for i in range(1, len(layers_dim) - 1):
             hidden_layers.extend([tf.keras.layers.Dropout(dropout)] + [
             tf.keras.layers.Dense(layers_dim[i], activation="relu", kernel_regularizer=tf.keras.regularizers.l2(L2))])
-        model = tf.keras.models.Sequential([
-                                               tf.keras.layers.Dense(layers_dim[0], activation='relu',
-                                                                     input_shape=(layers_dim[0],))] +
-                                           hidden_layers +
+        model = tf.keras.models.Sequential([tf.keras.layers.Dense(layers_dim[0], activation='relu',
+                                            input_shape=(layers_dim[0],))] + hidden_layers +
                                            [tf.keras.layers.Dense(layers_dim[-1], activation="sigmoid")])
         loss_function = tf.keras.losses.BinaryCrossentropy()
         model.compile(optimizer=optimizer, loss=loss_function,
@@ -465,7 +463,7 @@ def training_model_CV(model_dict, train_data, train_labels, val_data, val_labels
     if model_dict['type'] == 'NN':
         class_weights = compute_class_weight('balanced', classes=np.unique(train_labels), y=train_labels)
         class_weight = {0: class_weights[0], 1: class_weights[1]}
-        model.fit(train_data, train_labels, epochs=10, verbose=0, class_weight=class_weight)  # , validation_data = (val_data, val_labels))
+        model.fit(train_data, train_labels, epochs=10, verbose=0, class_weight=class_weight)
     else:
         model.fit(train_data, train_labels)
 
@@ -487,7 +485,7 @@ def train_predict_test(model_dict, train_data, train_labels, test_data, test_lab
     if model_dict['type'] == 'NN':
         class_weights = compute_class_weight('balanced', classes=np.unique(train_labels), y=train_labels)
         class_weight = {0: class_weights[0], 1: class_weights[1]}
-        model.fit(train_data, train_labels, epochs=10, verbose=0, class_weight=class_weight)  # , validation_data = (val_data, val_labels))
+        model.fit(train_data, train_labels, epochs=10, verbose=0, class_weight=class_weight)
     else:
         model.fit(train_data, train_labels)
 
@@ -498,18 +496,28 @@ def train_predict_test(model_dict, train_data, train_labels, test_data, test_lab
     metrics_dict = append_metrics_to_dict(metrics_dict, 'test', dict_test, None, None, metrics_ls=metrics_ls)
     return metrics_dict, dict_test, pred_test
 
-def get_coupled_prediction(pred_fp, pred_des, labels=None, criteria="unanimous"):
+def get_coupled_prediction(pred_fp, pred_des, selection='all',criteria="unanimous", threshold = 0.5):
     assert pred_fp.shape[0]==pred_des.shape[0], "The arrays do not have the same number of predicctions."
-    pred_fp_pos = pred_fp >= 0.5
-    pred_des_pos = pred_des >= 0.5
-    coincidences = np.where(pred_fp_pos & pred_des_pos)[0]
-    if criteria == "unanimous":
-        pred_coupled = pred_fp_pos & pred_des_pos
-    elif  criteria == "any_positive":
-        pred_coupled = pred_fp_pos | pred_des_pos
+    pred_fp_pos = pred_fp >= threshold
+    pred_des_pos = pred_des >= threshold
+    if selection == 'all':
+        coincidences = np.where(pred_fp_pos == pred_des_pos)[0]
+        if criteria == "unanimous":
+            pred_coupled = pred_fp_pos & pred_des_pos
+        elif criteria == "any_positive":
+            pred_coupled = pred_fp_pos | pred_des_pos
 
-    if not labels is None:
-        coincident_labels = labels[coincidences]
-        return pred_coupled, coincident_labels
+    elif selection == 'only_coincidences':
+        if criteria == "unanimous":  # Only selects True = True and False = False predictions
+            coincidences = np.where(pred_fp_pos == pred_des_pos)[0]
+            pred_coupled = pred_fp_pos[coincidences]
+        elif criteria == "any_positive": # Selects all False = False and all the predictions with at least one pred True
+            coincidences = np.where(np.logical_not(np.logical_xor(pred_fp_pos, pred_des_pos)) | np.logical_or(pred_fp_pos, pred_des_pos))[0]
+            pred_coupled = pred_fp_pos[coincidences]
+            pred_coupled_des = pred_des_pos[coincidences]
+            any_pos = np.where(np.logical_xor(pred_coupled, pred_coupled_des))[0]
+            pred_coupled[any_pos] = True
+
+        assert coincidences.shape[0] == pred_coupled.shape[0], "Something went wrong. `coincidences` and `pred_coupled` should have the same length."
 
     return pred_coupled, coincidences
