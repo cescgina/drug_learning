@@ -26,7 +26,6 @@ use_fingerprints = True  # if true -> fingerpornts are used.
 use_descriptors = True  # if true -> descriptors are used.
 balance_dataset = False   # if true -> it randomly remove molecules from the biggest class with RandomUnderSampler()
 coupled_NN = True  # if true -> two NN are used, one for descriptors and one for fp
-show_plots = False
 
 do_combination = False # False to use percentil_com to choose the combinations. True to do all the combinations with percetile_descriptors_ls and percetile_fingerprint_ls
 
@@ -104,7 +103,7 @@ if not os.path.exists(PATH_CV_results):
 if not os.path.exists(PATH_confusion):
     os.makedirs(PATH_confusion)
 
-print(f'Data is going to be save at: {PATH_SAVE}')
+print(f'Data is going to be saved at: {PATH_SAVE}')
 
 threshold_activity = 20
 data = pd.read_csv(os.path.join(PATH_DATA, "dataset_cleaned_SARS1_SARS2.csv"))
@@ -428,7 +427,7 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                         metrics_fold['balanced_acc_train'], metrics_fold['balanced_acc_val'], dict_test['acc'],
                         dict_test['MCC'],
                         dict_test['recall'], dict_test['precision'], dict_test['F1'], dict_test['balanced_acc'],
-                        filename=f'{PATH_CV_results}{percetile_fingerprint}-{percetile_descriptors}_fp-des_split{split + 1}', show_plots=show_plots)
+                        filename=f'{PATH_CV_results}{percetile_fingerprint}-{percetile_descriptors}_fp-des_split{split + 1}')
 
     utils.plot_results_split(metrics_split['MCC_train'], metrics_split['MCC_val'], metrics_split['acc_train'],
                        metrics_split['acc_val'], metrics_split['recall_train'], metrics_split['recall_val'],
@@ -438,7 +437,7 @@ for percetile_fingerprint, percetile_descriptors in percentil_com:
                        metrics_split['MCC_test'], metrics_split['acc_test'],
                        metrics_split['recall_test'], metrics_split['precision_test'], metrics_split['F1_test'],
                        metrics_split['balanced_acc_test'],
-                       filename=f'{PATH_CV_results}Average_{percetile_fingerprint}-{percetile_descriptors}_fp-des.png', show_plots=show_plots)
+                       filename=f'{PATH_CV_results}Average_{percetile_fingerprint}-{percetile_descriptors}_fp-des.png')
 
     if not coupled_NN:
         df[f'{percetile_fingerprint}:{percetile_descriptors}'] = [np.nanmean(metrics_split['MCC_val']),
