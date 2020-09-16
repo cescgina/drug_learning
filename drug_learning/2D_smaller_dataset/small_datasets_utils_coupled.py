@@ -9,6 +9,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, balanced_accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.feature_selection import SelectPercentile, SelectKBest
@@ -182,10 +183,8 @@ def generate_model(model_dict, train_data):
             layers_dim.insert(0, train_data.shape[1])
         hidden_layers = []
         for i in range(1, len(layers_dim) - 1):
-            hidden_layers.extend([tf.keras.layers.Dropout(dropout)] + [
-            tf.keras.layers.Dense(layers_dim[i], activation="relu", kernel_regularizer=tf.keras.regularizers.l2(L2))])
-        model = tf.keras.models.Sequential([tf.keras.layers.Dense(layers_dim[0], activation='relu',
-                                            input_shape=(layers_dim[0],))] + hidden_layers +
+            hidden_layers.extend([tf.keras.layers.Dropout(dropout)] + [tf.keras.layers.Dense(layers_dim[i], activation="relu", kernel_regularizer=tf.keras.regularizers.l2(L2))])
+        model = tf.keras.models.Sequential([tf.keras.layers.Dense(layers_dim[0], activation='relu', input_shape=(layers_dim[0],))] + hidden_layers +
                                            [tf.keras.layers.Dense(layers_dim[-1], activation="sigmoid")])
         loss_function = tf.keras.losses.BinaryCrossentropy()
         model.compile(optimizer=optimizer, loss=loss_function,
@@ -196,6 +195,11 @@ def generate_model(model_dict, train_data):
         gamma = model_dict.get('gamma', 'scale')
         class_weight = model_dict.get('class_weight')
         model = SVC(C=C, kernel=kernel_name, gamma=gamma, class_weight=class_weight)
+    elif model_dict['type'] == 'random_forest':
+        n_estimators = model_dict.get('n_estimators', 100)
+        seed = model_dict.get('seed', 0)
+        class_weight = model_dict.get('class_weight')
+        model = RandomForestClassifier(n_estimators=n_estimators, class_weight=class_weight, random_state=seed)
     return model
 
 
