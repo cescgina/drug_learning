@@ -1,0 +1,26 @@
+Morgan_Joan:
+  C: 4.17531
+  class_weight: balanced
+  des: null
+  fp: Morgan
+  gamma: 0.02807
+  percentile_des_ls:
+  - 0
+  - 0
+  percentile_fp_ls:
+  - 10
+  - 20
+  type: svm
+Morgan_Mordred_Joan:
+  C: 4.17531
+  class_weight: balanced
+  des: Mordred
+  fp: Morgan
+  gamma: 0.02807
+  percentile_des_ls:
+  - 10
+  - 20
+  percentile_fp_ls:
+  - 10
+  - 20
+  type: svm
