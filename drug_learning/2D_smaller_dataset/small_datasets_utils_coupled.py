@@ -1,4 +1,6 @@
 import os
+import io
+import yaml
 import collections
 import numpy as np
 import numpy.testing as npt
@@ -25,6 +27,17 @@ except ImportError:
 
 plt.style.use("ggplot")
 matplotlib.rcParams.update({'font.size': 24})
+
+
+def write_yaml(data, filename):
+    with io.open(f'{filename}.yaml', 'w', encoding='utf8') as outfile:
+        yaml.dump(data, outfile, default_flow_style=False, allow_unicode=True)
+
+def read_yaml(filename):
+    """filename must contain name + file extension, ie. .yaml or .yml"""
+    with open(f'{filename}', 'r') as stream:
+        data_loaded = yaml.safe_load(stream)
+    return data_loaded
 
 
 def col_to_array(df, col_name='p450-cyp2c9 Activity Outcome'):
@@ -248,7 +261,7 @@ def print_metrics(predicted_values, target_values, verbose=True, agr_percentage=
 def plot_results_CV(MCCs_train, MCCs_val, accs_train, accs_val, recall_train, recall_val, precision_train,
                     precision_val, F1_train, F1_val, balanced_acc_train, balanced_acc_val, test_acc, test_mcc,
                     test_recall, test_precision, test_f1, test_balanced_acc,
-                    filename='CV_results', show_plots=True):
+                    filename='CV_results'):
     fig, ax = plt.subplots(2, 3, figsize=(16, 16))
     y_min = -0.1 + np.nanmin(
         [np.nanmin(balanced_acc_train), np.nanmin(balanced_acc_val), np.nanmin(test_balanced_acc), np.nanmin(F1_train),
@@ -313,14 +326,13 @@ def plot_results_CV(MCCs_train, MCCs_val, accs_train, accs_val, recall_train, re
 
     plt.tight_layout()
     fig.savefig(filename)
-    if show_plots:
-        plt.show()
+    plt.show()
 
 
 def plot_results_split(MCCs_train, MCCs_val, accs_train, accs_val, recall_train, recall_val, precision_train,
                        precision_val, F1_train, F1_val, balanced_acc_train, balanced_acc_val, test_mcc, test_acc,
                        test_recall, test_precision, test_f1, test_balanced_acc,
-                       filename='CV_results_1split', show_plots=True):
+                       filename='CV_results_1split'):
     fig, ax = plt.subplots(2, 3, figsize=(16, 16))
     y_min = -0.1 + np.nanmin(
         [np.nanmin(balanced_acc_train), np.nanmin(balanced_acc_val), np.nanmin(test_balanced_acc), np.nanmin(F1_train),
@@ -373,8 +385,7 @@ def plot_results_split(MCCs_train, MCCs_val, accs_train, accs_val, recall_train,
 
     plt.tight_layout()
     fig.savefig(filename)
-    if show_plots:
-        plt.show()
+    plt.show()
 
 
 def get_best_features(train_data, train_labels, val_data, percentile):
@@ -438,7 +449,7 @@ def select_feat_and_get_best_feat_per_split(use_fingerprints, use_descriptors, f
 
 def append_metrics_to_dict(metrics_dict, name_set_1, dict_1, name_set_2=None, dict_2=None, metrics_ls=None):
     """
-    All the metrics in `dict_1` and/or `dict_2` are saved into `metrics_dict` with key = metric_name_set1, ie. MCC_train.
+    All the metrics in `dict_1` and/or `dict_2` are saved into `metrics_dict` with key = metricName_set1, ie. MCC_train.
     If dict_1=dict_2, it's used another nomenclature to avoid an error when copying the data from fold dict to split dict
     """
     if metrics_ls is None:
@@ -521,3 +532,105 @@ def get_coupled_prediction(pred_fp, pred_des, selection='all',criteria="unanimou
         assert coincidences.shape[0] == pred_coupled.shape[0], "Something went wrong. `coincidences` and `pred_coupled` should have the same length."
 
     return pred_coupled, coincidences
+
+def selection_criteria(addition, num_models, selection='all', criteria='majority'):
+    if criteria == 'majority':
+        threshold = round(num_models/2)
+        coincidences = np.where(addition>=threshold)[0]
+        if selection == 'all':
+            pred_coupled = np.where(addition>=threshold, True, False) # returns array with True when the majority is True, and false when the majority is False
+        elif selection == 'only_coincidences':
+            pred_coupled = addition[coincidences]/num_models # returns coupled probabilities normalised to 1.
+    elif criteria == 'unanimous':
+        coincidences = np.where(addition==num_models)[0]
+        if selection == 'all':
+            pred_coupled = np.where(addition==num_models, True, False) # returns array with True all the predictions are True, and false when there is at least one False
+        elif selection == 'only_coincidences':
+            pred_coupled = addition[coincidences]/num_models # returns coupled probabilities normalised to 1.        
+    else:
+        raise Exception(f"Your criteria: {criteria}, has not been implemented. Try with: 'majority', 'unanimous' or 'average'.")
+    
+    return pred_coupled, coincidences
+
+
+def get_multicoupled_prediction(pred_dict, selection='all', criteria='majority', threshold=0.5):
+    keys = list(pred_dict.keys())
+    if type(pred_dict[keys[0]]) is np.ndarray: # Case for pred_test_dict
+        addition = np.zeros(pred_dict[keys[0]].shape[0])
+        for name, pred in pred_dict.items():
+            addition = np.add(addition, pred>=threshold)
+        pred_coupled, coincidences = selection_criteria(addition, len(keys), selection=selection, criteria=criteria)
+        
+        return pred_coupled, coincidences
+    
+    elif type(pred_dict[keys[0]]) is dict: # Case for pred_train_dict and pred_val_dict
+        addition_CV = []
+        for cv, item in pred_dict.items():
+            name1=list(item.keys())[0]
+            addition=np.zeros(item[name1].shape[0])
+            for name, pred in item.items():
+                addition = np.add(addition, pred>=threshold)
+            addition_CV.append(addition)
+        pred_coupled_CV, coincidences_CV = [], []
+        for add in addition_CV:
+            pred_coupled, coincidences = selection_criteria(addition, len(list(pred_dict[keys[0]].keys())), selection=selection, criteria=criteria)
+            pred_coupled_CV.append(pred_coupled), coincidences_CV.append(coincidences)
+        
+        assert len(pred_coupled_CV) == len(coincidences_CV)
+        assert len(pred_coupled_CV) == len(list(pred_dict.keys()))
+        return pred_coupled_CV, coincidences_CV
+    else:
+        raise Exception('Unknown pred_dict structure')
+        
+        
+def get_train_val_split(train_index, val_index,use_fingerprints, use_descriptors, best_features_split_fp, best_features_split_des, train_val_data_fp=None, train_val_labels_fp=None, percentile_fp=None,train_val_data_des=None, train_val_labels_des=None, percentile_des=None):
+    if use_fingerprints:
+        train_data_fp, val_data_fp = train_val_data_fp[train_index], train_val_data_fp[val_index]
+        train_labels_fp, val_labels_fp = train_val_labels_fp[train_index], train_val_labels_fp[val_index]
+        data_fs_fp, best_fold_fp = get_best_features(train_data_fp, train_labels_fp, val_data_fp, percentile_fp)
+        best_features_split_fp.extend(list(best_fold_fp))
+
+        assert train_data_fp.shape[1] == val_data_fp.shape[1]
+        assert train_data_fp.shape[0] == train_labels_fp.shape[0]
+        assert val_data_fp.shape[0] == val_labels_fp.shape[0]
+        assert best_fold_fp.shape[0] == data_fs_fp['train_data_fs'].shape[1]
+
+        if not use_descriptors:  # to avoid conditional statements
+            train_data, val_data = data_fs_fp['train_data_fs'], data_fs_fp['val_data_fs']
+            train_labels, val_labels = train_labels_fp, val_labels_fp
+        
+            return train_data, train_labels, val_data, val_labels, data_fs_fp, None
+
+    if use_descriptors:
+        train_data_des, val_data_des = train_val_data_des[train_index], train_val_data_des[val_index]
+        train_labels_des, val_labels_des = train_val_labels_des[train_index], train_val_labels_des[val_index]
+        data_fs_des, best_fold_des = get_best_features(train_data_des, train_labels_des, val_data_des,
+                                                           percentile_des)
+        best_features_split_des.extend(list(best_fold_des))
+        
+        assert train_data_des.shape[1] == val_data_des.shape[1]
+        assert train_data_des.shape[0] == train_labels_des.shape[0]
+        assert val_data_des.shape[0] == val_labels_des.shape[0]
+        assert best_fold_des.shape[0] == data_fs_des['train_data_fs'].shape[1]
+
+        if not use_fingerprints:
+            train_data, val_data = data_fs_des['train_data_fs'], data_fs_des['val_data_fs']
+            train_labels, val_labels = train_labels_des, val_labels_des
+        
+            return train_data, train_labels, val_data, val_labels, None, data_fs_des
+        
+    if use_descriptors and use_fingerprints:
+        npt.assert_array_equal(train_labels_fp, train_labels_des,
+                               err_msg='Train labels do not coincide between descriptors and fingerprints.')
+        npt.assert_array_equal(val_labels_fp, val_labels_des,
+                               err_msg='Validation labels do not coincide between descriptors and fingerprints.')
+        assert data_fs_fp['train_data_fs'].shape[0] == data_fs_des['train_data_fs'].shape[0]
+        assert data_fs_fp['val_data_fs'].shape[0] == data_fs_des['val_data_fs'].shape[0]
+
+        train_labels, val_labels = train_labels_des, val_labels_des
+                
+        train_data = np.concatenate([data_fs_fp['train_data_fs'], data_fs_des['train_data_fs']], axis=1)
+        val_data = np.concatenate([data_fs_fp['val_data_fs'], data_fs_des['val_data_fs']], axis=1)
+
+        return train_data, train_labels, val_data, val_labels, data_fs_fp, data_fs_des
+
