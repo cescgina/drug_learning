@@ -90,7 +90,7 @@ for fp in fp_used:
     features[fp] = np.load(os.path.join("..", "2D", "features", "SARS1_SARS2", f"{fp.lower()}.npy"))
 #del fp_used
 
-data = pd.read_csv(os.path.join(PATH_DATA, "dataset_cleaned_SARS1_SARS2.csv"))
+data = pd.read_csv(os.path.join(PATH_DATA, "dataset_cleaned_SARS1_SARS2_common.csv"))
 #features = np.load(os.path.join("..", "2D", "features", "SARS1_SARS2", "morgan.npy"))
 active = (data["activity_merged"] < threshold_activity).values.astype(int)
 
@@ -99,8 +99,8 @@ if os.path.exists(os.path.join(PATH_FEAT, "SARS1_SARS2_mordred.csv")):
     df_descriptors=pd.read_csv(os.path.join(PATH_FEAT, "SARS1_SARS2_mordred.csv"))
 else:
     calc = Calculator(descriptors, ignore_3D=True)
-    molecules_file = os.path.join(PATH_DATA, "molecules_cleaned_SARS1_SARS2.sdf")
-    mols = list(Chem.SDMolSupplier(molecules_file))
+    molecules_file = os.path.join(PATH_DATA, "molecules_cleaned_SARS1_SARS2_common.sdf")
+    mols = [mol for mol in (Chem.SDMolSupplier(molecules_file))]
     df_descriptors = calc.pandas(mols)
     df_descriptors = df_descriptors.apply(pd.to_numeric, errors='coerce')
     df_descriptors = df_descriptors.dropna(axis=1)
@@ -439,5 +439,3 @@ for p in range(len(models[models_names[0]]['percentile_des_ls'])):
 
     df.to_csv(f'{PATH_SAVE}metrics_average_multicoupling.csv',
               index=True)  # To read this file do -> df = pd.read_csv('path/metrics_average_diff_percentile.csv', index_col=0)
-
-
