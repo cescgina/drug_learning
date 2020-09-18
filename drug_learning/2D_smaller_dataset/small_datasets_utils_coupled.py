@@ -9,8 +9,9 @@ import tensorflow as tf
 import seaborn as sns
 import matplotlib
 import matplotlib.pyplot as plt
-from sklearn.utils.class_weight import compute_class_weight
 from sklearn.svm import SVC
+from sklearn.utils.class_weight import compute_class_weight
+from sklearn.preprocessing import normalize
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score, balanced_accuracy_score
 from sklearn.metrics import confusion_matrix
@@ -587,54 +588,107 @@ def get_multicoupled_prediction(pred_dict, selection='all', criteria='majority',
         raise Exception('Unknown pred_dict structure')
         
         
-def get_train_val_split(train_index, val_index,use_fingerprints, use_descriptors, best_features_split_fp, best_features_split_des, train_val_data_fp=None, train_val_labels_fp=None, percentile_fp=None,train_val_data_des=None, train_val_labels_des=None, percentile_des=None):
-    if use_fingerprints:
-        train_data_fp, val_data_fp = train_val_data_fp[train_index], train_val_data_fp[val_index]
-        train_labels_fp, val_labels_fp = train_val_labels_fp[train_index], train_val_labels_fp[val_index]
-        data_fs_fp, best_fold_fp = get_best_features(train_data_fp, train_labels_fp, val_data_fp, percentile_fp)
-        best_features_split_fp.extend(list(best_fold_fp))
+def get_SARS_descriptors(PATH_DATA, PATH_FEAT):
+    calc = Calculator(descriptors, ignore_3D=True)
+    molecules_file = os.path.join(PATH_DATA, "molecules_cleaned_SARS1_SARS2_common.sdf")
+    mols = [mol for mol in (Chem.SDMolSupplier(molecules_file))]
+    df_descriptors = calc.pandas(mols)
+    df_descriptors = df_descriptors.apply(pd.to_numeric, errors='coerce')
+    df_descriptors = df_descriptors.dropna(axis=1)
+    df_descriptors.to_csv(os.path.join(PATH_FEAT, "SARS1_SARS2_mordred.csv"))
+    return df_descriptors
 
-        assert train_data_fp.shape[1] == val_data_fp.shape[1]
-        assert train_data_fp.shape[0] == train_labels_fp.shape[0]
-        assert val_data_fp.shape[0] == val_labels_fp.shape[0]
-        assert best_fold_fp.shape[0] == data_fs_fp['train_data_fs'].shape[1]
 
-        if not use_descriptors:  # to avoid conditional statements
-            train_data, val_data = data_fs_fp['train_data_fs'], data_fs_fp['val_data_fs']
-            train_labels, val_labels = train_labels_fp, val_labels_fp
-        
-            return train_data, train_labels, val_data, val_labels, data_fs_fp, None
+def load_SARS_features(models, active, PATH_DATA, PATH_FEAT, remove_outliers=True):
+    feat_used = []
+    for name, model in models.items():
+        feat_used.append(models[name]['feat1'])
+        if model['feat2'] is not None:
+            feat_used.append(models[name]['feat2'])
+    feat_used = set(feat_used)
+    feat_used.discard('Mordred')
+    fp_used = list(feat_used)
 
-    if use_descriptors:
-        train_data_des, val_data_des = train_val_data_des[train_index], train_val_data_des[val_index]
-        train_labels_des, val_labels_des = train_val_labels_des[train_index], train_val_labels_des[val_index]
-        data_fs_des, best_fold_des = get_best_features(train_data_des, train_labels_des, val_data_des,
-                                                           percentile_des)
-        best_features_split_des.extend(list(best_fold_des))
-        
-        assert train_data_des.shape[1] == val_data_des.shape[1]
-        assert train_data_des.shape[0] == train_labels_des.shape[0]
-        assert val_data_des.shape[0] == val_labels_des.shape[0]
-        assert best_fold_des.shape[0] == data_fs_des['train_data_fs'].shape[1]
+    features = {}
+    for fp in fp_used:
+        if not fp.lower() == 'rdkit':  # rdkit.npy does not exist in this folder. Its name is RDKIT.npy
+            features[fp] = np.load(os.path.join("..", "2D", "features", "SARS1_SARS2", f"{fp.lower()}.npy"))
+        else:  # TODO Change RDKIT.npy filename to rdkit.npy to avoid if statement. (WARN, it may affect to Joan's code...)
+            features[fp] = np.load(os.path.join("..", "2D", "features", "SARS1_SARS2", f"{fp.upper()}.npy"))
 
-        if not use_fingerprints:
-            train_data, val_data = data_fs_des['train_data_fs'], data_fs_des['val_data_fs']
-            train_labels, val_labels = train_labels_des, val_labels_des
-        
-            return train_data, train_labels, val_data, val_labels, None, data_fs_des
-        
-    if use_descriptors and use_fingerprints:
-        npt.assert_array_equal(train_labels_fp, train_labels_des,
-                               err_msg='Train labels do not coincide between descriptors and fingerprints.')
-        npt.assert_array_equal(val_labels_fp, val_labels_des,
-                               err_msg='Validation labels do not coincide between descriptors and fingerprints.')
-        assert data_fs_fp['train_data_fs'].shape[0] == data_fs_des['train_data_fs'].shape[0]
-        assert data_fs_fp['val_data_fs'].shape[0] == data_fs_des['val_data_fs'].shape[0]
+    if os.path.exists(os.path.join(PATH_FEAT, "SARS1_SARS2_mordred.csv")):
+        df_descriptors = pd.read_csv(os.path.join(PATH_FEAT, "SARS1_SARS2_mordred.csv"))
+    else:
+        df_descriptors = get_SARS_descriptors(PATH_DATA, PATH_FEAT)
 
-        train_labels, val_labels = train_labels_des, val_labels_des
-                
-        train_data = np.concatenate([data_fs_fp['train_data_fs'], data_fs_des['train_data_fs']], axis=1)
-        val_data = np.concatenate([data_fs_fp['val_data_fs'], data_fs_des['val_data_fs']], axis=1)
+    if os.path.exists(os.path.join(PATH_FEAT, 'SARS1_SARS2_mordred_clean_no_outliers.csv')):
+        descriptors_shared = pd.read_csv(os.path.join(PATH_FEAT, 'SARS1_SARS2_mordred_clean_no_outliers.csv'))
+        if 'Unnamed: 0' in descriptors_shared.columns:
+            descriptors_shared = descriptors_shared.drop(['Unnamed: 0'], axis=1)
 
-        return train_data, train_labels, val_data, val_labels, data_fs_fp, data_fs_des
+    else:
+        threshold = 3
+        df_descriptors["Molecule_index"] = range(df_descriptors.shape[0])
+        descriptors_shared = utils.drop_outliers(df_descriptors, threshold=threshold)
+        if 'Unnamed: 0' in descriptors_shared.columns:
+            descriptors_shared = descriptors_shared.drop(['Unnamed: 0'], axis=1)
+        descriptors_shared.to_csv(os.path.join(PATH_FEAT, 'SARS1_SARS2_mordred_clean_no_outliers.csv'))
 
+    loc = list(descriptors_shared['Molecule_index'])
+    for fp in features.keys():
+        features[fp] = features[fp][loc, :]
+    active = active[loc]
+
+    # if fp_used: # We always need Mordred, so it has no sense to have a if statement
+    norm_descriptors_shared = pd.DataFrame(normalize(descriptors_shared, norm='max', axis=0))
+    norm_descriptors_shared = np.asarray(norm_descriptors_shared).astype(
+        np.float32)  # to avoid problems with the KFoldCrossValidation
+    features.update({'Mordred': norm_descriptors_shared})
+
+    return features
+
+
+def get_train_val_split(train_index, val_index, best_features_split_1, train_val_data_1, train_val_labels_1,
+                        percentile_1, best_features_split_2=None, train_val_data_2=None, train_val_labels_2=None,
+                        percentile_2=None, concatenate=False):
+
+    train_data_1, val_data_fp2 = train_val_data_1[train_index], train_val_data_1[val_index]
+    train_labels_1, val_labels_1 = train_val_labels_1[train_index], train_val_labels_1[val_index]
+    data_fs_1, best_fold_1 = get_best_features(train_data_1, train_labels_1, val_data_fp2, percentile_1)
+    best_features_split_1.extend(list(best_fold_1))
+
+    assert train_data_1.shape[1] == val_data_fp2.shape[1]
+    assert train_data_1.shape[0] == train_labels_1.shape[0]
+    assert val_data_fp2.shape[0] == val_labels_1.shape[0]
+    assert best_fold_1.shape[0] == data_fs_1['train_data_fs'].shape[1]
+
+    if concatenate is False:
+        train_data, val_data = data_fs_1['train_data_fs'], data_fs_1['val_data_fs']
+        train_labels, val_labels = train_labels_1, val_labels_1
+
+        return train_data, train_labels, val_data, val_labels, data_fs_1, None
+
+    elif concatenate is True:
+        train_data_2, val_data_2 = train_val_data_2[train_index], train_val_data_2[val_index]
+        train_labels_2, val_labels_2 = train_val_labels_2[train_index], train_val_labels_2[val_index]
+        data_fs_2, best_fold_2 = get_best_features(train_data_2, train_labels_2, val_data_2, percentile_2)
+        best_features_split_2.extend(list(best_fold_2))
+
+        assert train_data_2.shape[1] == val_data_2.shape[1]
+        assert train_data_2.shape[0] == train_labels_2.shape[0]
+        assert val_data_2.shape[0] == val_labels_2.shape[0]
+        assert best_fold_2.shape[0] == data_fs_2['train_data_fs'].shape[1]
+
+        npt.assert_array_equal(train_labels_1, train_labels_2,
+                               err_msg='Train labels do not coincide between feat1 and feat2.')
+        npt.assert_array_equal(val_labels_1, val_labels_2,
+                               err_msg='Validation labels do not coincide between feat1 and feat2.')
+        assert data_fs_1['train_data_fs'].shape[0] == data_fs_2['train_data_fs'].shape[0]
+        assert data_fs_1['val_data_fs'].shape[0] == data_fs_2['val_data_fs'].shape[0]
+
+        train_labels, val_labels = train_labels_2, val_labels_2
+
+        train_data = np.concatenate([data_fs_1['train_data_fs'], data_fs_2['train_data_fs']], axis=1)
+        val_data = np.concatenate([data_fs_1['val_data_fs'], data_fs_2['val_data_fs']], axis=1)
+
+        return train_data, train_labels, val_data, val_labels, data_fs_1, data_fs_2
