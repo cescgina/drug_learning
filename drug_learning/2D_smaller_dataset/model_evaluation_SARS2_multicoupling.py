@@ -145,12 +145,12 @@ for p in range(len(models[models_names[0]]['percentile_feat1'])):
             if balance_dataset:
                 train_val_data_1, train_val_labels_1 = rus.fit_resample(train_val_data_1, train_val_labels_1)
 
-            if use_feat2 is False:  # To avoid conditional statement using utils.get_train_val_split()
+            if not use_feat2:  # To avoid conditional statement using utils.get_train_val_split()
                 best_features_split_1, best_features_split_2 = [], None
                 train_val_data_2, train_val_labels_2 = None, None
                 percentile_feat2 = None
 
-            elif use_feat2 is True:
+            else:
                 train_val_data_2, test_data_2, train_val_labels_2, test_labels_2 = train_test_split(
                     features[model['feat2']], active,
                     train_size=train_size, test_size=test_size,
@@ -193,8 +193,7 @@ for p in range(len(models[models_names[0]]['percentile_feat1'])):
                     train_val_data_2=train_val_data_2,
                     train_val_labels_2=train_val_labels_2,
                     percentile_2=percentile_feat2, concatenate=use_feat2)
-                print(
-                    f'train data: {train_data.shape} \n train lab {train_labels.shape} \n val data: {val_data.shape} \n val lab {val_labels.shape}')
+                print(f'train data: {train_data.shape} \n train lab {train_labels.shape} \n val data: {val_data.shape} \n val lab {val_labels.shape}')
 
                 _, pred_train, pred_val = utils.training_model_CV(model, train_data, train_labels, val_data,
                                                                   val_labels, metrics_fold_dummy, fold=i,
@@ -211,13 +210,13 @@ for p in range(len(models[models_names[0]]['percentile_feat1'])):
             train_val_data_fs_1 = train_val_data_1[:, best_feat_CV_1]
             test_data_1 = test_data_1[:, best_feat_CV_1]
 
-            if use_feat2 is False:
+            if not use_feat2:
                 labels_split = np.concatenate([train_labels, val_labels], axis=0)
                 train_val_data_fs = train_val_data_fs_1
                 test_data = test_data_1
                 test_labels = test_labels_1
 
-            elif use_feat2 is True:
+            else:
                 best_feat_CV_2 = utils.find_best_features(best_features_split_2, data_fs_2['train_data_fs'].shape[1])
                 train_val_data_2 = np.concatenate([train_val_data_2[train_index], train_val_data_2[val_index]], axis=0)
 
@@ -307,35 +306,21 @@ for p in range(len(models[models_names[0]]['percentile_feat1'])):
                              metrics_split['balanced_acc_test'],
                              filename=f'{PATH_CV_results}Average_percentile_position_ls_{p}.png')
 
-    df[f'percentile_position_ls_{p}'] = [np.nanmean(metrics_split['MCC_val']),
-                                         np.nanstd(metrics_split['MCC_val']),
-                                         np.nanmean(metrics_split['acc_val']),
-                                         np.nanstd(metrics_split['acc_val']),
-                                         np.nanmean(metrics_split['recall_val']),
-                                         np.nanstd(metrics_split['recall_val']),
-                                         np.nanmean(metrics_split['precision_val']),
-                                         np.nanstd(metrics_split['precision_val']),
-                                         np.nanmean(metrics_split['F1_val']),
-                                         np.nanstd(metrics_split['F1_val']),
-                                         np.nanmean(metrics_split['balanced_acc_val']),
-                                         np.nanstd(metrics_split['balanced_acc_val']),
-                                         np.nanmean(metrics_split['MCC_test']),
-                                         np.nanstd(metrics_split['MCC_test']),
-                                         np.nanmean(metrics_split['acc_test']),
-                                         np.nanstd(metrics_split['acc_test']),
-                                         np.nanmean(metrics_split['recall_test']),
-                                         np.nanstd(metrics_split['recall_test']),
-                                         np.nanmean(metrics_split['precision_test']),
-                                         np.nanstd(metrics_split['precision_test']),
-                                         np.nanmean(metrics_split['F1_test']),
-                                         np.nanstd(metrics_split['F1_test']),
-                                         np.nanmean(metrics_split['balanced_acc_test']),
-                                         np.nanstd(metrics_split['balanced_acc_test']),
-                                         np.nanmean(metrics_split['agreement_percentage_val']),
-                                         np.nanstd(metrics_split['agreement_percentage_val']),
-                                         np.nanmean(metrics_split['agreement_percentage_test']),
-                                         np.nanstd(metrics_split['agreement_percentage_test'])]
-
-    df.to_csv(f'{PATH_SAVE}metrics_average_multicoupling.csv',
-              index=True)  # To read this file do -> df = pd.read_csv('path/metrics_average_diff_percentile.csv', index_col=0)
+    df[f'percentile_position_ls_{p}'] = [np.nanmean(metrics_split['MCC_val']), np.nanstd(metrics_split['MCC_val']),
+                                         np.nanmean(metrics_split['acc_val']), np.nanstd(metrics_split['acc_val']),
+                                         np.nanmean(metrics_split['recall_val']), np.nanstd(metrics_split['recall_val']),
+                                         np.nanmean(metrics_split['precision_val']), np.nanstd(metrics_split['precision_val']),
+                                         np.nanmean(metrics_split['F1_val']), np.nanstd(metrics_split['F1_val']),
+                                         np.nanmean(metrics_split['balanced_acc_val']), np.nanstd(metrics_split['balanced_acc_val']),
+                                         np.nanmean(metrics_split['MCC_test']), np.nanstd(metrics_split['MCC_test']),
+                                         np.nanmean(metrics_split['acc_test']), np.nanstd(metrics_split['acc_test']),
+                                         np.nanmean(metrics_split['recall_test']), np.nanstd(metrics_split['recall_test']),
+                                         np.nanmean(metrics_split['precision_test']), np.nanstd(metrics_split['precision_test']),
+                                         np.nanmean(metrics_split['F1_test']), np.nanstd(metrics_split['F1_test']),
+                                         np.nanmean(metrics_split['balanced_acc_test']), np.nanstd(metrics_split['balanced_acc_test']),
+                                         np.nanmean(metrics_split['agreement_percentage_val']), np.nanstd(metrics_split['agreement_percentage_val']),
+                                         np.nanmean(metrics_split['agreement_percentage_test']), np.nanstd(metrics_split['agreement_percentage_test'])]
+    
+    # To read this file do -> df = pd.read_csv('path/metrics_average_diff_percentile.csv', index_col=0)
+    df.to_csv(f'{PATH_SAVE}metrics_average_multicoupling.csv', index=True)
 
