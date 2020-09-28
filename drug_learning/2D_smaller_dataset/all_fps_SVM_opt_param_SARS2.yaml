@@ -1,0 +1,52 @@
+Mordred_Joan:
+  C: 43.28
+  class_weight: balanced
+  feat1: Mordred
+  feat2: null
+  gamma: 0.152
+  percentile_feat1:
+  - 10
+  - 20
+  percentile_feat2:
+  - 0
+  - 0
+  type: svm
+Morgan_Joan:
+  C: 1.15
+  class_weight: balanced
+  feat1: Morgan
+  feat2: null
+  gamma: 0.061
+  percentile_feat2:
+  - 0
+  - 0
+  percentile_feat1:
+  - 10
+  - 20
+  type: svm
+Rdkit_Joan:
+  C: 0.954
+  class_weight: balanced
+  feat1: rdkit
+  feat2: null
+  gamma: 0.00305
+  percentile_feat2:
+  - 0
+  - 0
+  percentile_feat1:
+  - 10
+  - 20
+  type: svm
+MACCS_Joan:
+  C: 0.792
+  class_weight: balanced
+  feat1: maccs
+  feat2: null
+  gamma: 0.1
+  percentile_feat2:
+  - 0
+  - 0
+  percentile_feat1:
+  - 10
+  - 20
+  type: svm

@@ -1,0 +1,44 @@
+Mordred_Joan:
+  class_weight: balanced
+  feat1: Mordred
+  feat2: null
+  percentile_feat1:
+  - 10
+  - 20
+  percentile_feat2:
+  - 0
+  - 0
+  type: random_forest
+Morgan_Joan:
+  class_weight: balanced
+  feat1: Morgan
+  feat2: null
+  percentile_feat1:
+  - 10
+  - 20
+  percentile_feat2:
+  - 0
+  - 0
+  type: random_forest
+Rdkit_Joan:
+  class_weight: balanced
+  feat1: rdkit
+  feat2: null
+  percentile_feat1:
+  - 10
+  - 20
+  percentile_feat2:
+  - 0
+  - 0
+  type: random_forest
+MACCS_Joan:
+  class_weight: balanced
+  feat1: maccs
+  feat2: null
+  percentile_feat1:
+  - 10
+  - 20
+  percentile_feat2:
+  - 0
+  - 0
+  type: random_forest
