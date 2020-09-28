@@ -1,5 +1,5 @@
 import os
-from itertools import product
+import argparse
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
@@ -11,30 +11,28 @@ from mordred import Calculator, descriptors
 from imblearn.under_sampling import RandomUnderSampler
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Evaluate perfomance of ensemble models using multiple splits and cross validation")
+    parser.add_argument('controlFile', type=str, default='three_SVM_models_SARS2.yaml', help="File containing the model information")
+    parser.add_argument('--nfolds', type=int, default=10, help="Number of folds in cross validation")
+    parser.add_argument('--nsplits', type=int, default=10, help="Number of splits in the training data")
+    parser.add_argument('--seed', default=1, help="Seed for the random number generator")
+    parser.add_argument('--selection_criteria', type=str, default="unanimous", help="Criteria to classify according to ensemble voting, options are unanimous (all must predict positive to be positive) and majority (the majority must predict positive to be positive)")
+    arg = parser.parse_args()
+    return arg.controlFile, arg.seed, arg.nsplits, arg.nfolds
+
+
 ###########  INPUTS ##############
-
-try:
-    YAML_FILE = str(sys.argv[1]) # yaml file can be introduced as argunment using terminal
-except IndexError:
-    YAML_FILE = 'three_SVM_models_SARS2.yaml'
-
-
+YAML_FILE, seed, num_train_val_splits, folds, selection_criteria = parse_arguments()
 PATH = '../'  # "/gpfs/scratch/bsc72/bsc72665/" # For Power9
 PATH_DATA = "../datasets/SARS2/"  # f"{PATH}}datasets/CYP/"
 PATH_FEAT = 'features/'  # f"{PATH}}2D_smaller_dataset/features"
-
 balance_dataset = False   # if true -> it randomly remove molecules from the biggest class with RandomUnderSampler()
-
 dataset_size = 500
-seed = 1
-num_train_val_splits = 2 # Number of splits of the whole dataset
-folds = 2 # Number of folds in cross-validation
-
 remove_outliers = True
 
 # Option used when coupled_NN = True
 data_selection = 'all' # 'only_coincidences' to only use the coincident predictions or 'all' if you want to use all
-selection_criteria = 'majority' # 'unanimous' if both predictions must be true or "majority"
 prob_threshold = 0.5
 ##################################
 
@@ -62,7 +60,7 @@ threshold_activity = 20
 data = pd.read_csv(os.path.join(PATH_DATA, "dataset_cleaned_SARS1_SARS2_common.csv"))
 active = (data["activity_merged"] < threshold_activity).values.astype(int)
 
-features = utils.load_SARS_features(models, active,PATH_DATA, PATH_FEAT, remove_outliers=True)
+features = utils.load_SARS_features(models, active, PATH_DATA, PATH_FEAT, remove_outliers=True)
 
 if balance_dataset:
     PATH_SAVE = f"{PATH}2D_smaller_dataset/SARS/multycoupling/balanced_dataset/{YAML_FILE[:-5]}/{dataset_size}molec/"
@@ -84,7 +82,7 @@ dataset_size = min(dataset_size, features['Mordred'].shape[0])  # training + val
 train_size = int(0.75 * dataset_size) # training + validation sets
 test_size = dataset_size-train_size
 
-for fp in features.keys():
+for fp in features:
     assert features[fp].shape[0] == features['Mordred'].shape[0]
 
 models_names = list(models.keys())
