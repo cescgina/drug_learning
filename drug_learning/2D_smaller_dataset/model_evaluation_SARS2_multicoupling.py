@@ -62,11 +62,12 @@ data = pd.read_csv(os.path.join(PATH_DATA, "dataset_cleaned_SARS1_SARS2_common.c
 active = (data["activity_merged"] < threshold_activity).values.astype(int)
 
 features = utils.load_SARS_features(models, active, PATH_DATA, PATH_FEAT, remove_outliers=True)
+name_run = os.path.splitext(os.path.split(YAML_FILE)[1])[0]
 
 if balance_dataset:
-    PATH_SAVE = f"{PATH}2D_smaller_dataset/SARS/multycoupling/balanced_dataset/{YAML_FILE[:-5]}/{dataset_size}molec/"
+    PATH_SAVE = f"{PATH}2D_smaller_dataset/SARS/multycoupling/balanced_dataset/{name_run}/{dataset_size}molec/"
 elif not balance_dataset:
-    PATH_SAVE = f"{PATH}2D_smaller_dataset/SARS/multycoupling/unbalanced_dataset/{YAML_FILE[:-5]}/{dataset_size}molec/"
+    PATH_SAVE = f"{PATH}2D_smaller_dataset/SARS/multycoupling/unbalanced_dataset/{name_run}/{dataset_size}molec/"
 
 PATH_CV_results = f"{PATH_SAVE}CV_results/"
 PATH_confusion = f"{PATH_SAVE}confusion/"
