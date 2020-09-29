@@ -1,7 +1,7 @@
 import os
 import io
-import yaml
 import collections
+import yaml
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
@@ -10,14 +10,16 @@ import seaborn as sns
 import matplotlib
 import matplotlib.pyplot as plt
 from sklearn.svm import SVC
-from sklearn.utils.class_weight import compute_class_weight
 from sklearn.preprocessing import normalize
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import VotingClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import f1_score, balanced_accuracy_score
-from sklearn.metrics import confusion_matrix
-from sklearn.feature_selection import SelectPercentile, SelectKBest
-from sklearn.feature_selection import chi2, mutual_info_classif
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import f1_score, balanced_accuracy_score
+from sklearn.feature_selection import chi2, mutual_info_classif
+from sklearn.feature_selection import SelectPercentile, SelectKBest
+from sklearn.utils.class_weight import compute_class_weight
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem, MACCSkeys
 try:
@@ -127,7 +129,7 @@ def drop_outliers_samples(df, threshold=3):
         df_outlier.drop(f'{col}_outlier', inplace=True, axis=1)
     return df_outlier
 
-def split_features(features, labels, train_size=450, val_size=50, seed=1, plot_distribution=False, filename='labels_distribution'):
+def split_features(features, labels, train_size=450, val_size=50, seed=1, plot_distribution=False, filename='labels_distribution.png', show_plots=False):
     train_data, val_data, train_labels, val_labels = train_test_split(features, labels, train_size=train_size,
                                                                       test_size=val_size, stratify=labels,
                                                                       random_state=seed)
@@ -140,7 +142,8 @@ def split_features(features, labels, train_size=450, val_size=50, seed=1, plot_d
         ax[1].set_xlabel("Validation set 2c9")
         plt.subplots_adjust(wspace=0.5)
         fig.savefig(filename)
-        plt.show()
+        if show_plots:
+            plt.show()
 
     return {'train_data': train_data, 'val_data': val_data, 'train_labels': train_labels, 'val_labels': val_labels}
 
@@ -161,14 +164,15 @@ def select_features(X_train, Y_train, X_test, score_func=chi2, k_best=None, perc
     return X_train_fs, X_test_fs, fs
 
 
-def plot_score(fs, print_scores=False, filename='score_features'):
+def plot_score(fs, print_scores=False, filename='score_features.png', show_plots=False):
     """plot the score for all the features"""
     if print_scores:
         for i in range(len(fs.scores_)):
             print('Feature %d: %f' % (i, fs.scores_[i]))
     plt.bar([i for i in range(len(fs.scores_))], fs.scores_)
     plt.savefig(filename)
-    plt.show()
+    if show_plots:
+        plt.show()
 
 
 def get_best_features_index(fs):
@@ -214,10 +218,18 @@ def generate_model(model_dict, train_data):
         seed = model_dict.get('seed', 0)
         class_weight = model_dict.get('class_weight')
         model = RandomForestClassifier(n_estimators=n_estimators, class_weight=class_weight, random_state=seed)
+    elif model_dict['type'] == 'knn':
+        num_neigh = model_dict.get('neighbors', 5)
+        model = KNeighborsClassifier(n_neighbors=num_neigh)
+    elif model_dict['type'] == 'voting':
+        estimators = [(id_model, generate_model(submodel, train_data)) for id_model, submodel in model_dict['models'].items()]
+        voting_criteria = model_dict.get('criteria', 'hard')
+        weights = model_dict.get('weights')
+        model = VotingClassifier(estimators, voting=voting_criteria, weights=weights)
     return model
 
 
-def plot_confusion(predicted_values, target_values, filename='confusion_matrix'):
+def plot_confusion(predicted_values, target_values, filename='confusion_matrix.png', show_plots=False):
     try:
         cm = confusion_matrix(target_values, predicted_values >= 0.5)
     except TypeError:
@@ -231,7 +243,8 @@ def plot_confusion(predicted_values, target_values, filename='confusion_matrix')
     ax.xaxis.set_ticklabels(['Inactive', 'Active'])
     ax.yaxis.set_ticklabels(['Inactive', 'Active'])
     plt.savefig(filename)
-    plt.show()
+    if show_plots:
+        plt.show()
 
 
 def print_metrics(predicted_values, target_values, verbose=True, agr_percentage=1):
@@ -266,7 +279,7 @@ def print_metrics(predicted_values, target_values, verbose=True, agr_percentage=
 def plot_results_CV(MCCs_train, MCCs_val, accs_train, accs_val, recall_train, recall_val, precision_train,
                     precision_val, F1_train, F1_val, balanced_acc_train, balanced_acc_val, test_acc, test_mcc,
                     test_recall, test_precision, test_f1, test_balanced_acc,
-                    filename='CV_results'):
+                    filename='CV_results.png', show_plots=False):
     fig, ax = plt.subplots(2, 3, figsize=(16, 16))
     y_min = -0.1 + np.nanmin(
         [np.nanmin(balanced_acc_train), np.nanmin(balanced_acc_val), np.nanmin(test_balanced_acc), np.nanmin(F1_train),
@@ -331,13 +344,14 @@ def plot_results_CV(MCCs_train, MCCs_val, accs_train, accs_val, recall_train, re
 
     plt.tight_layout()
     fig.savefig(filename)
-    plt.show()
+    if show_plots:
+        plt.show()
 
 
 def plot_results_split(MCCs_train, MCCs_val, accs_train, accs_val, recall_train, recall_val, precision_train,
                        precision_val, F1_train, F1_val, balanced_acc_train, balanced_acc_val, test_mcc, test_acc,
                        test_recall, test_precision, test_f1, test_balanced_acc,
-                       filename='CV_results_1split'):
+                       filename='CV_results_1split.png', show_plots=False):
     fig, ax = plt.subplots(2, 3, figsize=(16, 16))
     y_min = -0.1 + np.nanmin(
         [np.nanmin(balanced_acc_train), np.nanmin(balanced_acc_val), np.nanmin(test_balanced_acc), np.nanmin(F1_train),
@@ -390,7 +404,8 @@ def plot_results_split(MCCs_train, MCCs_val, accs_train, accs_val, recall_train,
 
     plt.tight_layout()
     fig.savefig(filename)
-    plt.show()
+    if show_plots:
+        plt.show()
 
 
 def get_best_features(train_data, train_labels, val_data, percentile):
@@ -551,10 +566,9 @@ def selection_criteria(addition, num_models, selection='all', criteria='majority
         if selection == 'all':
             pred_coupled = np.where(addition==num_models, True, False) # returns array with True all the predictions are True, and false when there is at least one False
         elif selection == 'only_coincidences':
-            pred_coupled = addition[coincidences]/num_models # returns coupled probabilities normalised to 1.        
+            pred_coupled = addition[coincidences]/num_models # returns coupled probabilities normalised to 1.
     else:
         raise Exception(f"Your criteria: {criteria}, has not been implemented. Try with: 'majority', 'unanimous' or 'average'.")
-    
     return pred_coupled, coincidences
 
 
@@ -565,9 +579,9 @@ def get_multicoupled_prediction(pred_dict, selection='all', criteria='majority',
         for name, pred in pred_dict.items():
             addition = np.add(addition, pred>=threshold)
         pred_coupled, coincidences = selection_criteria(addition, len(keys), selection=selection, criteria=criteria)
-        
+
         return pred_coupled, coincidences
-    
+
     elif type(pred_dict[keys[0]]) is dict: # Case for pred_train_dict and pred_val_dict
         addition_CV = []
         for cv, item in pred_dict.items():
@@ -579,8 +593,9 @@ def get_multicoupled_prediction(pred_dict, selection='all', criteria='majority',
         pred_coupled_CV, coincidences_CV = [], []
         for add in addition_CV:
             pred_coupled, coincidences = selection_criteria(addition, len(list(pred_dict[keys[0]].keys())), selection=selection, criteria=criteria)
-            pred_coupled_CV.append(pred_coupled), coincidences_CV.append(coincidences)
-        
+            pred_coupled_CV.append(pred_coupled)
+            coincidences_CV.append(coincidences)
+ 
         assert len(pred_coupled_CV) == len(coincidences_CV)
         assert len(pred_coupled_CV) == len(list(pred_dict.keys()))
         return pred_coupled_CV, coincidences_CV

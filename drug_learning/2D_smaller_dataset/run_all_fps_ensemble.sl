@@ -13,6 +13,8 @@
 export PYTHONPATH="/home/bsc72/bsc72021/drug_lerning_repos/drug_learning/drug_learning"
 source activate drug_learning
 
-python model_evaluation_SARS2_multicoupling.py all_fps_SVM_SARS2.yaml
-python model_evaluation_SARS2_multicoupling.py all_fps_RF_SARS2.yaml
-python model_evaluation_SARS2_multicoupling.py all_fps_SVM_opt_param_SARS2.yaml
+# python model_evaluation_SARS2_multicoupling.py yaml_files/all_fps_SVM_SARS2.yaml
+# python model_evaluation_SARS2_multicoupling.py yaml_files/all_fps_RF_SARS2.yaml
+# python model_evaluation_SARS2_multicoupling.py yaml_files/all_fps_SVM_opt_param_SARS2.yaml
+python model_evaluation_SARS2_multicoupling.py  yaml_files/all_fps_knn_SARS2.yaml
+python model_evaluation_SARS2_multicoupling.py  yaml_files/all_fps_voting_SARS2.yaml
