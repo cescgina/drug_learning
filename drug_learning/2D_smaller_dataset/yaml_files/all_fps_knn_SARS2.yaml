@@ -1,0 +1,40 @@
+Mordred_Joan:
+  feat1: Mordred
+  feat2: null
+  percentile_feat1:
+  - 10
+  - 20
+  percentile_feat2:
+  - 0
+  - 0
+  type: knn
+Morgan_Joan:
+  feat1: Morgan
+  feat2: null
+  percentile_feat1:
+  - 10
+  - 20
+  percentile_feat2:
+  - 0
+  - 0
+  type: knn
+Rdkit_Joan:
+  feat1: rdkit
+  feat2: null
+  percentile_feat1:
+  - 10
+  - 20
+  percentile_feat2:
+  - 0
+  - 0
+  type: knn
+MACCS_Joan:
+  feat1: maccs
+  feat2: null
+  percentile_feat1:
+  - 10
+  - 20
+  percentile_feat2:
+  - 0
+  - 0
+  type: knn
