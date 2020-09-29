@@ -18,12 +18,13 @@ def parse_arguments():
     parser.add_argument('--nsplits', type=int, default=10, help="Number of splits in the training data")
     parser.add_argument('--seed', default=1, help="Seed for the random number generator")
     parser.add_argument('--selection_criteria', type=str, default="unanimous", help="Criteria to classify according to ensemble voting, options are unanimous (all must predict positive to be positive) and majority (the majority must predict positive to be positive)")
+    parser.add_argument('--show', action='store_true', help="Whether to show the plots on the screen")
     arg = parser.parse_args()
-    return arg.controlFile, arg.seed, arg.nsplits, arg.nfolds
+    return arg.controlFile, arg.seed, arg.nsplits, arg.nfolds, arg.selection_criteria, arg.show
 
 
 ###########  INPUTS ##############
-YAML_FILE, seed, num_train_val_splits, folds, selection_criteria = parse_arguments()
+YAML_FILE, seed, num_train_val_splits, folds, selection_criteria, show_plots = parse_arguments()
 PATH = '../'  # "/gpfs/scratch/bsc72/bsc72665/" # For Power9
 PATH_DATA = "../datasets/SARS2/"  # f"{PATH}}datasets/CYP/"
 PATH_FEAT = 'features/'  # f"{PATH}}2D_smaller_dataset/features"
@@ -292,7 +293,8 @@ for p in range(len(models[models_names[0]]['percentile_feat1'])):
                               metrics_fold['balanced_acc_train'], metrics_fold['balanced_acc_val'], dict_test['acc'],
                               dict_test['MCC'],
                               dict_test['recall'], dict_test['precision'], dict_test['F1'], dict_test['balanced_acc'],
-                              filename=f'{PATH_CV_results}percentile_position_ls_{p}_split{split}')
+                              filename=f'{PATH_CV_results}percentile_position_ls_{p}_split{split}.png',
+                              show_plots=show_plots)
 
     utils.plot_results_split(metrics_split['MCC_train'], metrics_split['MCC_val'], metrics_split['acc_train'],
                              metrics_split['acc_val'], metrics_split['recall_train'], metrics_split['recall_val'],
@@ -302,7 +304,7 @@ for p in range(len(models[models_names[0]]['percentile_feat1'])):
                              metrics_split['MCC_test'], metrics_split['acc_test'],
                              metrics_split['recall_test'], metrics_split['precision_test'], metrics_split['F1_test'],
                              metrics_split['balanced_acc_test'],
-                             filename=f'{PATH_CV_results}Average_percentile_position_ls_{p}.png')
+                             filename=f'{PATH_CV_results}Average_percentile_position_ls_{p}.png', show_plots=show_plots)
 
     df[f'percentile_position_ls_{p}'] = [np.nanmean(metrics_split['MCC_val']), np.nanstd(metrics_split['MCC_val']),
                                          np.nanmean(metrics_split['acc_val']), np.nanstd(metrics_split['acc_val']),
