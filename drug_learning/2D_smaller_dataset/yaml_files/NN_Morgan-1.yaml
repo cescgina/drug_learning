@@ -16,4 +16,4 @@ Morgan_Joan:
   lr: 0.1
   optimizer: adam
   L2: 0.001
-  layers_dimensions: [30, 30, 30, 30, 30]
+  layers_dimensions: [30, 30, 30, 30, 30, 1]
