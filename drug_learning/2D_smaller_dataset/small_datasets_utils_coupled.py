@@ -194,7 +194,7 @@ def generate_model(model_dict, train_data):
     if model_dict['type'] == "NN":
         dropout = model_dict['dropout']
         lr = model_dict['lr']
-        #optimizer = model_dict['optimizer']
+        #optimizer = model_dict['optimizer'] Does not include lr
         if model_dict['optimizer'].lower() == 'adam':
             optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
         elif model_dict['optimizer'].lower() == 'sgd':
@@ -262,7 +262,7 @@ def print_metrics(predicted_values, target_values, verbose=True, agr_percentage=
         tn, fp, fn, tp = confusion_matrix(target_values, predicted_values >= 0.5, labels=[0,1]).ravel()
         f1 = f1_score(target_values, predicted_values >= 0.5, average='binary')
         balanced_accuracy = balanced_accuracy_score(target_values, predicted_values >= 0.5, sample_weight=None, adjusted=True)
-    except TypeError:
+    except TypeError or ValueError:
         tn, fp, fn, tp = confusion_matrix(target_values, predicted_values, labels=[0,1]).ravel()
         f1 = f1_score(target_values, predicted_values, average='binary')
         balanced_accuracy = balanced_accuracy_score(target_values, predicted_values, sample_weight=None, adjusted=True)
@@ -498,7 +498,7 @@ def training_model_CV(model_dict, train_data, train_labels, val_data, val_labels
         metrics_ls = ['MCC', 'acc', 'recall', 'precision', 'F1', 'balanced_acc']
     model = generate_model(model_dict, train_data)
     if model_dict['type'] == 'NN':
-        model.summary()
+        #model.summary()
         class_weights = compute_class_weight('balanced', classes=np.unique(train_labels), y=train_labels)
         class_weight = {0: class_weights[0], 1: class_weights[1]}
         model.fit(train_data, train_labels, epochs=10, verbose=0, class_weight=class_weight)
