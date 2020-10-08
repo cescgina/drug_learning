@@ -1,0 +1,19 @@
+Morgan_Joan:
+  feat1: Morgan
+  feat2: null
+  percentile_feat1:
+  - 10
+  - 20
+  - 40
+  - 60
+  percentile_feat2:
+  - 0
+  - 0
+  - 0
+  - 0
+  type: NN
+  dropout: 0.5
+  lr: 0.1
+  optimizer: adam
+  L2: 0.001
+  layers_dimensions: [30, 30, 30, 30, 30]
